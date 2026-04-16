@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lars-knowledge-system",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "lars-knowledge-system/ui", "--no-clipboard"],
+      "port": 3001,
+      "autoPort": true
+    }
+  ]
+}

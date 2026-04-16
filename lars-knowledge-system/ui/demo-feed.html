@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo — Cards v2</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f0f0f5;
+  --surface: #ffffff;
+  --surface2: #f8f8fb;
+  --border: #e4e4ec;
+  --border2: #d0d0e0;
+  --text: #1a1a2e;
+  --text2: #555570;
+  --text3: #9090aa;
+  --accent: #5b6af0;
+  --accent-light: #eef0fe;
+  --accent2: #22c27a;
+  --accent2-light: #e8faf2;
+  --warn: #f59e0b;
+  --warn-light: #fef3c7;
+  --radius: 14px;
+  --radius2: 8px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.07);
+  --shadow2: 0 6px 24px rgba(0,0,0,0.13);
+}
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ─── HEADER ─── */
+.app-header {
+  background: var(--text);
+  color: white;
+  padding: 0 24px;
+  height: 54px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 200;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.header-logo { font-size: 0.9rem; font-weight: 700; }
+.header-logo span { color: #7c8cf8; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.progress-pill {
+  background: rgba(255,255,255,0.1); border-radius: 20px;
+  padding: 4px 12px; font-size: 0.72rem; color: #c0c0e0;
+  display: flex; align-items: center; gap: 8px;
+}
+.pbm { width: 60px; height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; }
+.pbmf { height: 100%; background: #7c8cf8; border-radius: 2px; transition: width 0.4s; }
+.btn-export-h { background: var(--accent); color: white; border: none; padding: 6px 14px; border-radius: var(--radius2); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+
+/* ─── VIEWS ─── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ═══════════════════════════════════════════════════
+   MAIN VIEW
+═══════════════════════════════════════════════════ */
+#view-main { padding: 24px 20px 80px; max-width: 760px; margin: 0 auto; }
+
+/* Progress summary bar */
+.summary-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+.summary-bar-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text3); margin-bottom: 12px;
+}
+.summary-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.summary-col { }
+.summary-col-label {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.4px; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 5px;
+}
+.col-done .summary-col-label { color: #15a068; }
+.col-pending .summary-col-label { color: var(--text3); }
+.summary-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.summary-chip {
+  font-size: 0.7rem; font-weight: 500;
+  padding: 3px 9px; border-radius: 20px; border: 1px solid;
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.chip-done { background: #f0fdf7; border-color: #86efac; color: #15a068; }
+.chip-pending { background: var(--surface2); border-color: var(--border2); color: var(--text2); }
+.summary-none { font-size: 0.73rem; color: var(--text3); padding: 3px 0; }
+
+/* Cards grid */
+.cards-section-label {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text3);
+  margin: 20px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.cards-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* Single question card */
+.q-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: box-shadow 0.15s, transform 0.1s;
+  position: relative;
+}
+.q-card:hover { box-shadow: var(--shadow2); transform: translateY(-2px); }
+.q-card.done { border-color: #86efac; }
+.q-card.done .q-card-body { opacity: 0.7; }
+
+/* Accent stripe on left */
+.q-card-stripe {
+  width: 4px; position: absolute; top: 0; left: 0; bottom: 0; border-radius: var(--radius) 0 0 var(--radius);
+}
+.stripe-empty { background: var(--border2); }
+.stripe-partial { background: var(--warn); }
+.stripe-done { background: var(--accent2); }
+
+.q-card-body {
+  padding: 14px 14px 12px 18px;
+  flex: 1; cursor: pointer;
+}
+.q-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.q-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  font-size: 0.72rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.q-num-empty { background: var(--surface2); color: var(--text3); border: 1px solid var(--border2); }
+.q-num-partial { background: var(--warn-light); color: #b45309; }
+.q-num-done { background: var(--accent2-light); color: #15a068; }
+
+.q-card-title {
+  font-size: 0.82rem; font-weight: 600; line-height: 1.35;
+  color: var(--text); flex: 1;
+}
+.q-card.done .q-card-title { color: var(--text2); }
+
+.q-card-section { font-size: 0.68rem; color: var(--text3); margin-bottom: 6px; }
+.q-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.q-entries-badge {
+  font-size: 0.68rem; font-weight: 600; padding: 2px 7px;
+  border-radius: 20px; background: var(--accent2-light); color: #15a068;
+}
+.q-last-date { font-size: 0.68rem; color: var(--text3); }
+.q-card-cta {
+  font-size: 0.7rem; color: var(--accent); font-weight: 600;
+  display: flex; align-items: center; gap: 3px; margin-top: 6px;
+}
+.q-card.done .q-card-cta { color: #15a068; }
+
+/* Card footer */
+.q-card-footer {
+  padding: 8px 14px 10px 18px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+}
+.btn-mark-done {
+  font-size: 0.7rem; font-weight: 600;
+  padding: 4px 10px; border-radius: 20px; border: 1.5px solid;
+  cursor: pointer; transition: all 0.15s; background: transparent;
+}
+.btn-mark-done.unmarked { border-color: var(--border2); color: var(--text3); }
+.btn-mark-done.unmarked:hover { border-color: var(--accent2); color: #15a068; background: var(--accent2-light); }
+.btn-mark-done.marked { border-color: var(--accent2); color: #15a068; background: var(--accent2-light); }
+.btn-open-card {
+  font-size: 0.7rem; color: var(--accent); font-weight: 600;
+  background: none; border: none; cursor: pointer; padding: 4px 0;
+  display: flex; align-items: center; gap: 3px;
+}
+.btn-open-card:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════
+   DETAIL VIEW
+═══════════════════════════════════════════════════ */
+#view-detail { padding: 0 0 100px; }
+
+.detail-header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 54px; z-index: 100;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.btn-back {
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text2); padding: 6px 12px; border-radius: var(--radius2);
+  font-size: 0.75rem; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+  transition: all 0.15s;
+}
+.btn-back:hover { border-color: var(--accent); color: var(--accent); }
+.detail-crumb { font-size: 0.75rem; color: var(--text3); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+.detail-body { max-width: 680px; margin: 0 auto; padding: 24px 20px 0; }
+
+.detail-q-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.68rem; font-weight: 700; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.detail-q-title { font-size: 1rem; font-weight: 700; line-height: 1.35; margin-bottom: 8px; }
+.detail-q-context {
+  font-size: 0.76rem; color: var(--text3); font-style: italic;
+  padding: 8px 12px; background: var(--surface2);
+  border-left: 3px solid var(--border2); border-radius: 0 var(--radius2) var(--radius2) 0;
+  margin-bottom: 20px;
+}
+
+/* Compose */
+.compose-box {
+  background: var(--surface); border: 1.5px solid var(--accent);
+  border-radius: var(--radius); overflow: hidden;
+  box-shadow: 0 0 0 3px var(--accent-light); margin-bottom: 14px;
+}
+.compose-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--accent-light);
+  border-bottom: 1px solid #c8cffb;
+}
+.compose-top-label { font-size: 0.73rem; font-weight: 700; color: var(--accent); }
+.btn-mic {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px; background: white;
+  border: 1px solid #c8cffb; border-radius: var(--radius2);
+  font-size: 0.73rem; font-weight: 600; color: var(--accent);
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-mic:hover { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-mic.recording { background: #fee2e2; border-color: #fca5a5; color: #dc2626; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.3)}50%{box-shadow:0 0 0 5px rgba(239,68,68,0)} }
+
+.mic-bar {
+  display: none; align-items: center; gap: 8px;
+  padding: 5px 16px; background: #fee2e2; border-bottom: 1px solid #fca5a5;
+  font-size: 0.7rem; color: #dc2626; font-weight: 600;
+}
+.mic-bar.active { display: flex; }
+.mic-dot { width: 7px; height: 7px; border-radius: 50%; background: #dc2626; animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.25} }
+
+.compose-ta {
+  width: 100%; min-height: 130px; border: none; background: white;
+  padding: 14px 16px; font-family: inherit; font-size: 0.86rem;
+  color: var(--text); line-height: 1.65; resize: vertical; outline: none;
+}
+.compose-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; border-top: 1px solid var(--border); background: white;
+}
+.compose-wc { font-size: 0.7rem; color: var(--text3); }
+.btn-save {
+  background: var(--accent); color: white; border: none;
+  padding: 7px 18px; border-radius: var(--radius2);
+  font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: background 0.15s;
+}
+.btn-save:hover { background: #4a59df; }
+.btn-save:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
+
+/* Mark done inside detail */
+.detail-mark-wrap {
+  display: flex; justify-content: flex-end; margin-bottom: 14px;
+}
+.btn-mark-done-detail {
+  font-size: 0.75rem; font-weight: 600;
+  padding: 6px 14px; border-radius: 20px; border: 1.5px solid;
+  cursor: pointer; transition: all 0.15s; background: transparent;
+}
+.btn-mark-done-detail.unmarked { border-color: var(--border2); color: var(--text3); }
+.btn-mark-done-detail.unmarked:hover { border-color: var(--accent2); color: #15a068; background: var(--accent2-light); }
+.btn-mark-done-detail.marked { border-color: var(--accent2); color: #15a068; background: var(--accent2-light); }
+
+/* History */
+.btn-history {
+  width: 100%; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--text2);
+  transition: all 0.15s;
+}
+.btn-history:hover { border-color: var(--border2); color: var(--text); }
+.btn-history.open { border-radius: var(--radius) var(--radius) 0 0; border-bottom: none; }
+.h-count { background: var(--accent-light); color: var(--accent); font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.h-arrow { color: var(--text3); transition: transform 0.2s; }
+.btn-history.open .h-arrow { transform: rotate(180deg); }
+
+.history-panel {
+  display: none; background: var(--surface);
+  border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius); overflow: hidden;
+}
+.history-panel.open { display: block; }
+.h-entry { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.h-entry:last-child { border-bottom: none; }
+.h-entry-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.h-date { font-size: 0.7rem; font-weight: 700; color: var(--text3); }
+.h-words { font-size: 0.68rem; color: var(--text3); background: var(--surface2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 20px; }
+.h-text {
+  font-size: 0.82rem; color: var(--text2); line-height: 1.6;
+  white-space: pre-wrap; max-height: 90px; overflow: hidden; position: relative;
+}
+.h-text::after { content:''; position:absolute; bottom:0;left:0;right:0;height:24px; background: linear-gradient(transparent, white); }
+.h-text.expanded { max-height: none; }
+.h-text.expanded::after { display: none; }
+.btn-expand { background: none; border: none; font-size: 0.68rem; color: var(--accent); cursor: pointer; padding: 4px 0 0; display: block; }
+
+/* Saved flash */
+@keyframes flash-green { 0%{background:#f0fdf7} 100%{background:white} }
+.compose-ta.saved { animation: flash-green 0.8s ease; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-logo">Lars <span>Knowledge System</span></div>
+  <div class="header-right">
+    <div class="progress-pill">
+      <span id="pct-text">0%</span>
+      <div class="pbm"><div class="pbmf" id="pct-bar" style="width:0%"></div></div>
+    </div>
+    <button class="btn-export-h">Exportar JSON</button>
+  </div>
+</div>
+
+<!-- ═══ MAIN VIEW ═══ -->
+<div class="view active" id="view-main">
+  <div id="main-inner" style="max-width:760px;margin:0 auto;padding:22px 16px 80px"></div>
+</div>
+
+<!-- ═══ DETAIL VIEW ═══ -->
+<div class="view" id="view-detail">
+  <div class="detail-header">
+    <button class="btn-back" onclick="goBack()">← Volver</button>
+    <div class="detail-crumb" id="detail-crumb"></div>
+  </div>
+  <div class="detail-body">
+    <div class="detail-q-badge" id="d-badge"></div>
+    <div class="detail-q-title" id="d-title"></div>
+    <div class="detail-q-context" id="d-context"></div>
+
+    <div class="detail-mark-wrap">
+      <button class="btn-mark-done-detail unmarked" id="btn-done-detail" onclick="toggleDoneDetail()">
+        Marcar como completada
+      </button>
+    </div>
+
+    <div class="compose-box">
+      <div class="mic-bar" id="mic-bar"><div class="mic-dot"></div><span>Escuchando…</span></div>
+      <div class="compose-top">
+        <span class="compose-top-label">📝 Hoy</span>
+        <button class="btn-mic" id="btn-mic" onclick="toggleMic()">🎙 Dictar</button>
+      </div>
+      <textarea class="compose-ta" id="compose-ta" placeholder="Escribe o dicta tu respuesta…"></textarea>
+      <div class="compose-footer">
+        <span class="compose-wc" id="compose-wc">0 palabras</span>
+        <button class="btn-save" id="btn-save" onclick="saveToday()" disabled>Guardar entrada →</button>
+      </div>
+    </div>
+
+    <div id="history-wrap">
+      <button class="btn-history" id="btn-history" onclick="toggleHistory()" style="display:none">
+        <span style="display:flex;align-items:center;gap:8px">📅 Entradas anteriores <span class="h-count" id="h-count">0</span></span>
+        <span class="h-arrow">▾</span>
+      </button>
+      <div class="history-panel" id="history-panel"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  { id:'q1', sec:'Perfil de auditor',   title:'¿Cuántas auditorías haces al año y cómo de diferentes son entre sí?',           ctx:'Define el volumen y variabilidad del sistema — si cada auditoría es un mundo o hay un patrón repetible.' },
+  { id:'q2', sec:'Perfil de auditor',   title:'¿Cuál es el perfil típico de empresa que auditas?',                               ctx:'Define el ICP del sistema — el tipo de cliente para el que tiene que estar optimizado.' },
+  { id:'q3', sec:'Tu proceso completo', title:'¿Cuáles son las fases de tu proceso de auditoría de principio a fin?',            ctx:'El esqueleto del sistema — la secuencia de pasos que el motor tiene que replicar.' },
+  { id:'q4', sec:'Tu proceso completo', title:'¿Qué documentación o información pides antes de empezar?',                        ctx:'Define el módulo de intake — qué datos necesita el sistema antes de arrancar.' },
+  { id:'q5', sec:'Hallazgos',           title:'¿Cuáles son los 5 problemas más frecuentes que encuentras?',                      ctx:'El conocimiento más valioso de Lars — los patrones que el sistema debe detectar.' },
+  { id:'q6', sec:'El entregable',       title:'¿Cómo estructuras el informe final? ¿Qué secciones tiene siempre?',               ctx:'Define el output del sistema — qué tiene que producir al final de cada auditoría.' },
+  { id:'q7', sec:'Cómo funciona',       title:'¿Cómo distingues si un proceso funciona bien o mal?',                             ctx:'El corazón del sistema de evaluación — los criterios que el motor aplica para puntuar.' },
+  { id:'q8', sec:'Límites',             title:'¿Qué partes de tu trabajo crees que NO se pueden sistematizar?',                  ctx:'Define los límites del sistema — dónde necesita intervención humana.' },
+];
+
+// State
+const STATE = {
+  entries: {
+    q2: [ { date:'13 abr 2026', text:'Pymes de entre 20 y 200 personas. Principalmente servicios profesionales. El momento típico es cuando llevan 5 años y sienten que algo no escala bien.' },
+           { date:'14 abr 2026', text:'Añado que también trabajo con empresas familiares en transición — ahí el problema mezcla lo profesional y lo personal.' } ],
+    q5: [ { date:'14 abr 2026', text:'El más frecuente: falta de claridad en roles. Nadie sabe quién decide qué. El segundo: procesos que viven en la cabeza de una persona clave y no están documentados.' } ],
+  },
+  done: { q2: false, q5: false },
+};
+
+let currentId = null;
+let isRecording = false;
+let recognition = null;
+let demoTimer = null;
+
+// ─── RENDER MAIN ──────────────────────────────────────────
+function renderMain() {
+  const wrap = document.getElementById('main-inner');
+
+  const doneIds   = QUESTIONS.filter(q => STATE.done[q.id]).map(q => q.id);
+  const pendingIds = QUESTIONS.filter(q => !STATE.done[q.id]).map(q => q.id);
+  const pct = Math.round(doneIds.length / QUESTIONS.length * 100);
+
+  document.getElementById('pct-text').textContent = pct + '%';
+  document.getElementById('pct-bar').style.width = pct + '%';
+
+  // Summary bar
+  const doneChips   = doneIds.map(id => { const q = QUESTIONS.find(x=>x.id===id); return `<span class="summary-chip chip-done">✓ ${q.title.substring(0,28)}…</span>`; }).join('');
+  const pendChips   = pendingIds.map(id => { const q = QUESTIONS.find(x=>x.id===id); return `<span class="summary-chip chip-pending">${q.title.substring(0,28)}…</span>`; }).join('');
+
+  wrap.innerHTML = `
+    <div class="summary-bar">
+      <div class="summary-bar-title">Estado de secciones — ${doneIds.length}/${QUESTIONS.length} completadas</div>
+      <div class="summary-cols">
+        <div class="summary-col col-done">
+          <div class="summary-col-label">✓ Completadas</div>
+          <div class="summary-chips">${doneChips || '<span class="summary-none">Ninguna aún</span>'}</div>
+        </div>
+        <div class="summary-col col-pending">
+          <div class="summary-col-label">○ Pendientes</div>
+          <div class="summary-chips">${pendChips || '<span class="summary-none" style="color:#15a068">¡Todo completado!</span>'}</div>
+        </div>
+      </div>
+    </div>
+
+    ${pendingIds.length > 0 ? `
+      <div class="cards-section-label">Pendientes · ${pendingIds.length}</div>
+      <div class="cards-grid">${pendingIds.map(id => cardHTML(id)).join('')}</div>
+    ` : ''}
+
+    ${doneIds.length > 0 ? `
+      <div class="cards-section-label">Completadas · ${doneIds.length}</div>
+      <div class="cards-grid">${doneIds.map(id => cardHTML(id)).join('')}</div>
+    ` : ''}
+  `;
+}
+
+function cardHTML(id) {
+  const q       = QUESTIONS.find(x => x.id === id);
+  const idx     = QUESTIONS.indexOf(q) + 1;
+  const entries = STATE.entries[id] || [];
+  const isDone  = !!STATE.done[id];
+  const hasEnt  = entries.length > 0;
+  const status  = isDone ? 'done' : hasEnt ? 'partial' : 'empty';
+  const last    = entries[entries.length - 1];
+
+  const stripeClass = { done:'stripe-done', partial:'stripe-partial', empty:'stripe-empty' }[status];
+  const numClass    = { done:'q-num-done',  partial:'q-num-partial',  empty:'q-num-empty'  }[status];
+  const numIcon     = isDone ? '✓' : idx;
+  const ctaText     = isDone ? '✓ Completada' : hasEnt ? `${entries.length} entrada${entries.length>1?'s':''} · ver más` : 'Toca para responder →';
+
+  return `
+    <div class="q-card ${isDone?'done':''}" id="card_${id}">
+      <div class="q-card-stripe ${stripeClass}"></div>
+      <div class="q-card-body" onclick="openQ('${id}')">
+        <div class="q-card-section">${q.sec}</div>
+        <div class="q-card-header">
+          <div class="q-num ${numClass}">${numIcon}</div>
+          <div class="q-card-title">${q.title}</div>
+        </div>
+        <div class="q-card-meta">
+          ${hasEnt ? `<span class="q-entries-badge">${entries.length} entr.</span><span class="q-last-date">${last.date}</span>` : ''}
+        </div>
+        <div class="q-card-cta">${ctaText}</div>
+      </div>
+      <div class="q-card-footer">
+        <button class="btn-mark-done ${isDone?'marked':'unmarked'}"
+          onclick="event.stopPropagation(); toggleDoneCard('${id}')">
+          ${isDone ? '✓ Completada' : 'Marcar lista'}
+        </button>
+        <button class="btn-open-card" onclick="openQ('${id}')">Abrir →</button>
+      </div>
+    </div>
+  `;
+}
+
+// ─── TOGGLE DONE ──────────────────────────────────────────
+function toggleDoneCard(id) {
+  STATE.done[id] = !STATE.done[id];
+  renderMain();
+}
+function toggleDoneDetail() {
+  if (!currentId) return;
+  STATE.done[currentId] = !STATE.done[currentId];
+  const isDone = STATE.done[currentId];
+  const btn = document.getElementById('btn-done-detail');
+  btn.className = 'btn-mark-done-detail ' + (isDone ? 'marked' : 'unmarked');
+  btn.textContent = isDone ? '✓ Completada' : 'Marcar como completada';
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────
+function openQ(id) {
+  currentId = id;
+  const q   = QUESTIONS.find(x => x.id === id);
+  const idx = QUESTIONS.indexOf(q) + 1;
+
+  document.getElementById('detail-crumb').textContent = q.sec + ' · ' + q.title.substring(0, 45) + '…';
+  document.getElementById('d-badge').textContent = `Pregunta ${idx} · ${q.sec}`;
+  document.getElementById('d-title').textContent = q.title;
+  document.getElementById('d-context').textContent = q.ctx;
+
+  const isDone = !!STATE.done[id];
+  const btnD = document.getElementById('btn-done-detail');
+  btnD.className = 'btn-mark-done-detail ' + (isDone ? 'marked' : 'unmarked');
+  btnD.textContent = isDone ? '✓ Completada' : 'Marcar como completada';
+
+  const ta = document.getElementById('compose-ta');
+  ta.value = '';
+  document.getElementById('btn-save').disabled = true;
+  document.getElementById('compose-wc').textContent = '0 palabras';
+
+  renderHistoryDetail(id);
+
+  // Switch view
+  document.getElementById('view-main').classList.remove('active');
+  document.getElementById('view-detail').classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function goBack() {
+  stopMic();
+  // Close history
+  document.getElementById('history-panel').classList.remove('open');
+  document.getElementById('btn-history').classList.remove('open');
+  document.getElementById('view-detail').classList.remove('active');
+  document.getElementById('view-main').classList.add('active');
+  renderMain();
+}
+
+// ─── COMPOSE ──────────────────────────────────────────────
+document.getElementById('compose-ta').addEventListener('input', () => {
+  const ta = document.getElementById('compose-ta');
+  const w = ta.value.trim().split(/\s+/).filter(Boolean).length;
+  document.getElementById('compose-wc').textContent = w + ' palabras';
+  document.getElementById('btn-save').disabled = !ta.value.trim();
+  ta.scrollTop = ta.scrollHeight;
+});
+
+function saveToday() {
+  const ta   = document.getElementById('compose-ta');
+  const text = ta.value.trim();
+  if (!text || !currentId) return;
+  stopMic();
+
+  const today    = new Date().toLocaleDateString('es-ES', {day:'numeric', month:'short', year:'numeric'});
+  STATE.entries[currentId] = STATE.entries[currentId] || [];
+  STATE.entries[currentId].push({ date: today, text });
+
+  // Flash + clear
+  ta.classList.add('saved');
+  setTimeout(() => ta.classList.remove('saved'), 800);
+  ta.value = '';
+  document.getElementById('compose-wc').textContent = '0 palabras';
+  document.getElementById('btn-save').disabled = true;
+
+  renderHistoryDetail(currentId);
+
+  const btn = document.getElementById('btn-save');
+  btn.textContent = '✓ Guardado';
+  btn.style.background = '#22c27a';
+  setTimeout(() => { btn.textContent = 'Guardar entrada →'; btn.style.background = ''; }, 1800);
+}
+
+// ─── HISTORY ──────────────────────────────────────────────
+function renderHistoryDetail(id) {
+  const entries = (STATE.entries[id] || []).slice().reverse();
+  const n = entries.length;
+  const btn = document.getElementById('btn-history');
+  btn.style.display = n > 0 ? 'flex' : 'none';
+  document.getElementById('h-count').textContent = n;
+
+  document.getElementById('history-panel').innerHTML = entries.map((e, i) => {
+    const eid  = 'he' + i;
+    const words = e.text.trim().split(/\s+/).filter(Boolean).length;
+    const long  = e.text.length > 220;
+    return `
+      <div class="h-entry">
+        <div class="h-entry-head">
+          <span class="h-date">📅 ${e.date}</span>
+          <span class="h-words">${words} palabras</span>
+        </div>
+        <div class="h-text ${long?'':'expanded'}" id="${eid}">${e.text}</div>
+        ${long ? `<button class="btn-expand" onclick="expandH('${eid}',this)">▾ Ver completo</button>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function toggleHistory() {
+  const panel = document.getElementById('history-panel');
+  const btn   = document.getElementById('btn-history');
+  const open  = !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  btn.classList.toggle('open', open);
+  if (open) btn.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function expandH(id, btn) {
+  document.getElementById(id).classList.add('expanded');
+  btn.remove();
+}
+
+// ─── MIC ──────────────────────────────────────────────────
+function toggleMic() { isRecording ? stopMic() : startMic(); }
+
+function startMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { simulateDictation(); return; }
+  const ta   = document.getElementById('compose-ta');
+  const base = ta.value;
+  let final  = '';
+  recognition = new SR();
+  recognition.lang = 'es-ES'; recognition.continuous = true; recognition.interimResults = true;
+  recognition.onresult = e => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
+      else interim += e.results[i][0].transcript;
+    }
+    ta.value = (base.trim() ? base.trimEnd() + ' ' : '') + final + interim;
+    ta.scrollTop = ta.scrollHeight;
+    ta.dispatchEvent(new Event('input'));
+  };
+  recognition.onend = () => { if (isRecording) { try { recognition.start(); } catch(e){} } };
+  recognition.start();
+  setMicUI(true);
+}
+
+function stopMic() {
+  if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
+  if (demoTimer)   { clearInterval(demoTimer); demoTimer = null; }
+  setMicUI(false);
+}
+
+function setMicUI(on) {
+  isRecording = on;
+  const btn = document.getElementById('btn-mic');
+  const bar = document.getElementById('mic-bar');
+  btn.classList.toggle('recording', on);
+  btn.innerHTML = on ? '⏹ Parar' : '🎙 Dictar';
+  bar.classList.toggle('active', on);
+}
+
+function simulateDictation() {
+  const words = [' Hago',' unas',' doce',' auditorías',' al',' año.',' Cada',' una',' es',' diferente',' según',' el',' sector.',' Las',' clínicas',' son',' las',' más',' complejas',' por',' la',' mezcla',' de',' procesos.'];
+  let i = 0; setMicUI(true);
+  const ta = document.getElementById('compose-ta');
+  demoTimer = setInterval(() => {
+    if (i >= words.length) { stopMic(); return; }
+    ta.value += words[i++];
+    ta.scrollTop = ta.scrollHeight;
+    ta.dispatchEvent(new Event('input'));
+  }, 130);
+}
+
+// ─── BOOT ─────────────────────────────────────────────────
+renderMain();
+</script>
+</body>
+</html>

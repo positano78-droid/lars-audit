@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proto v3 — Cards drag & propose</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f0f0f5;
+  --surface: #fff;
+  --surface2: #f8f8fb;
+  --border: #e4e4ec;
+  --border2: #d0d0e0;
+  --text: #1a1a2e;
+  --text2: #555570;
+  --text3: #9090aa;
+  --accent: #5b6af0;
+  --accent-light: #eef0fe;
+  --accent2: #22c27a;
+  --accent2-light: #e8faf2;
+  --warn: #f59e0b;
+  --warn-light: #fef3c7;
+  --radius: 14px;
+  --radius2: 8px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.07);
+  --shadow2: 0 8px 28px rgba(0,0,0,0.14);
+}
+body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; }
+
+/* ── HEADER ── */
+.app-header {
+  background:var(--text); color:white; padding:0 24px; height:54px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:300; box-shadow:0 2px 8px rgba(0,0,0,0.25);
+}
+.header-logo { font-size:.9rem; font-weight:700; }
+.header-logo span { color:#7c8cf8; }
+.header-right { display:flex; align-items:center; gap:10px; }
+.progress-pill {
+  background:rgba(255,255,255,.1); border-radius:20px;
+  padding:4px 12px; font-size:.72rem; color:#c0c0e0;
+  display:flex; align-items:center; gap:8px;
+}
+.pbm { width:60px; height:3px; background:rgba(255,255,255,.15); border-radius:2px; overflow:hidden; }
+.pbmf { height:100%; background:#7c8cf8; border-radius:2px; transition:width .4s; }
+.btn-export { background:var(--accent); color:white; border:none; padding:6px 14px; border-radius:var(--radius2); font-size:.75rem; font-weight:600; cursor:pointer; }
+
+/* ── INSTRUCCIONES ── */
+.instructions-panel {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 24px;
+}
+.instr-inner { max-width: 940px; margin: 0 auto; }
+.instr-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.instr-title-block {}
+.instr-title { font-size:1.05rem; font-weight:800; color:var(--text); margin-bottom:4px; }
+.instr-subtitle { font-size:.78rem; color:var(--text3); line-height:1.45; max-width:560px; }
+.btn-new-process {
+  display:flex; align-items:center; gap:7px; flex-shrink:0;
+  background:var(--accent); color:white; border:none;
+  padding:10px 18px; border-radius:var(--radius2);
+  font-size:.82rem; font-weight:700; cursor:pointer;
+  box-shadow:0 3px 10px rgba(91,106,240,.35);
+  transition:transform .15s, box-shadow .15s;
+}
+.btn-new-process:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(91,106,240,.45); }
+.btn-new-process-icon { font-size:1rem; }
+.instr-steps { display:flex; gap:12px; flex-wrap:wrap; }
+.instr-step {
+  display:flex; align-items:flex-start; gap:8px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:var(--radius2); padding:8px 12px; flex:1; min-width:160px;
+}
+.step-num {
+  width:20px; height:20px; border-radius:50%; background:var(--accent); color:white;
+  font-size:.62rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;
+}
+.step-text { font-size:.72rem; color:var(--text2); line-height:1.4; }
+.step-text strong { font-weight:700; color:var(--text); }
+
+/* ── LAYOUT ── */
+.main-wrap { max-width:940px; margin:0 auto; padding:24px 16px 100px; }
+
+/* ── GRID ── */
+.cards-grid {
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+  align-items:start;
+}
+
+/* ── CARD ── */
+.q-card {
+  background:var(--surface); border:1.5px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  overflow:hidden; position:relative; display:flex; flex-direction:column;
+  transition:box-shadow .15s, opacity .15s, transform .15s;
+  cursor:default;
+}
+.q-card:focus-within { box-shadow:var(--shadow2); }
+.q-card.dragging { opacity:.4; transform:scale(.98); }
+.q-card.drag-over { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-light); }
+
+/* stripe */
+.q-stripe { position:absolute; top:0; left:0; bottom:0; width:4px; border-radius:var(--radius) 0 0 var(--radius); }
+.stripe-empty   { background:var(--border2); }
+.stripe-partial { background:var(--warn); }
+.stripe-done    { background:var(--accent2); }
+.stripe-new     { background:var(--accent); }
+
+/* card head */
+.q-card-head { padding:11px 14px 9px 18px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:8px; }
+.drag-handle {
+  color:var(--text3); font-size:.9rem; cursor:grab; padding:2px 4px; margin-top:1px;
+  flex-shrink:0; user-select:none; border-radius:4px; transition:background .1s;
+}
+.drag-handle:hover { background:var(--surface2); color:var(--text2); }
+.drag-handle:active { cursor:grabbing; }
+.head-content { flex:1; min-width:0; }
+.q-meta-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.q-num {
+  width:20px; height:20px; border-radius:50%; font-size:.62rem; font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.q-num-empty   { background:var(--surface2); color:var(--text3); border:1px solid var(--border2); }
+.q-num-partial { background:var(--warn-light); color:#b45309; }
+.q-num-done    { background:var(--accent2-light); color:#15a068; }
+.q-num-new     { background:var(--accent-light); color:var(--accent); }
+.q-section-badge { font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text3); }
+.q-section-badge.badge-new { color:var(--accent); }
+.q-title { font-size:.82rem; font-weight:700; line-height:1.35; color:var(--text); }
+
+/* compose */
+.q-compose { padding:10px 14px 10px 18px; border-bottom:1px solid var(--border); flex:1; }
+.compose-mic-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.compose-label { font-size:.67rem; font-weight:700; color:var(--accent); }
+.btn-mic {
+  display:flex; align-items:center; gap:4px; padding:4px 10px;
+  background:var(--accent-light); border:1px solid #c8cffb;
+  border-radius:var(--radius2); font-size:.68rem; font-weight:600; color:var(--accent);
+  cursor:pointer; transition:all .15s;
+}
+.btn-mic:hover { background:var(--accent); color:white; border-color:var(--accent); }
+.btn-mic.recording { background:#fee2e2; border-color:#fca5a5; color:#dc2626; animation:pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3)} 50%{box-shadow:0 0 0 5px rgba(239,68,68,0)} }
+.mic-bar { display:none; align-items:center; gap:5px; padding:4px 8px; background:#fee2e2; border-radius:var(--radius2); font-size:.67rem; color:#dc2626; font-weight:600; margin-bottom:6px; }
+.mic-bar.active { display:flex; }
+.mic-dot { width:6px; height:6px; border-radius:50%; background:#dc2626; animation:blink 1s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+.compose-ta {
+  width:100%; min-height:95px; border:1.5px solid var(--border); border-radius:var(--radius2);
+  background:var(--surface2); padding:9px 10px; font-family:inherit; font-size:.81rem;
+  color:var(--text); line-height:1.6; resize:vertical; outline:none;
+  transition:border-color .15s, background .15s;
+}
+.compose-ta:focus { border-color:var(--accent); background:white; box-shadow:0 0 0 3px var(--accent-light); }
+@keyframes flash-green { 0%{background:#f0fdf7} 100%{background:var(--surface2)} }
+.compose-ta.saved { animation:flash-green .8s ease; }
+.compose-footer-row { display:flex; align-items:center; justify-content:space-between; margin-top:7px; }
+.compose-wc { font-size:.67rem; color:var(--text3); }
+.btn-save {
+  background:var(--accent); color:white; border:none;
+  padding:6px 14px; border-radius:var(--radius2); font-size:.71rem; font-weight:700; cursor:pointer;
+}
+.btn-save:hover { background:#4a59df; }
+.btn-save:disabled { background:var(--border2); color:var(--text3); cursor:not-allowed; }
+
+/* card footer */
+.q-card-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px 8px 18px; background:var(--surface2); border-top:1px solid var(--border);
+}
+.btn-mark-done { font-size:.67rem; font-weight:600; padding:4px 10px; border-radius:20px; border:1.5px solid; cursor:pointer; background:transparent; transition:all .15s; }
+.btn-mark-done.unmarked { border-color:var(--border2); color:var(--text3); }
+.btn-mark-done.unmarked:hover { border-color:var(--accent2); color:#15a068; background:var(--accent2-light); }
+.btn-mark-done.marked   { border-color:var(--accent2); color:#15a068; background:var(--accent2-light); }
+.btn-hist { display:flex; align-items:center; gap:5px; font-size:.67rem; font-weight:600; color:var(--accent); background:none; border:none; cursor:pointer; padding:4px 0; }
+.btn-hist:hover { opacity:.7; }
+.h-badge { background:var(--accent-light); color:var(--accent); font-size:.6rem; font-weight:700; padding:1px 6px; border-radius:20px; }
+.no-entries { font-size:.63rem; color:var(--text3); }
+
+/* ── FAB ── */
+.fab {
+  position:fixed; bottom:28px; right:28px; z-index:250;
+  background:var(--accent); color:white; border:none;
+  width:56px; height:56px; border-radius:50%;
+  font-size:1.5rem; cursor:pointer; box-shadow:0 4px 16px rgba(91,106,240,.45);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .15s, box-shadow .15s;
+}
+.fab:hover { transform:scale(1.08); box-shadow:0 6px 22px rgba(91,106,240,.55); }
+.fab-label {
+  position:fixed; bottom:36px; right:94px; z-index:250;
+  background:var(--text); color:white; font-size:.72rem; font-weight:600;
+  padding:5px 12px; border-radius:20px; white-space:nowrap;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.fab:hover ~ .fab-label { opacity:1; }
+
+/* ══════════════════════════════════════
+   MODALS
+══════════════════════════════════════ */
+.modal-overlay {
+  display:none; position:fixed; inset:0; z-index:500;
+  background:rgba(15,15,35,.5); backdrop-filter:blur(2px);
+  align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal-box {
+  background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow2);
+  width:92%; max-width:520px; max-height:85vh;
+  display:flex; flex-direction:column; overflow:hidden;
+  animation:modal-in .18s ease;
+}
+@keyframes modal-in { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
+.modal-header {
+  padding:14px 16px 12px; border-bottom:1px solid var(--border);
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-shrink:0;
+}
+.modal-title { font-size:.92rem; font-weight:700; color:var(--text); }
+.modal-subtitle { font-size:.72rem; color:var(--text3); margin-top:2px; }
+.btn-close { background:var(--surface2); border:1px solid var(--border2); border-radius:var(--radius2); width:28px; height:28px; font-size:.9rem; color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.btn-close:hover { background:var(--border); }
+.modal-body { overflow-y:auto; flex:1; padding:16px; }
+.modal-footer { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; flex-shrink:0; }
+
+/* propose modal */
+.field-label { font-size:.72rem; font-weight:700; color:var(--text2); margin-bottom:5px; }
+.field-hint  { font-size:.67rem; color:var(--text3); margin-bottom:6px; line-height:1.4; }
+.modal-input {
+  width:100%; border:1.5px solid var(--border); border-radius:var(--radius2);
+  padding:9px 11px; font-family:inherit; font-size:.83rem; color:var(--text);
+  background:var(--surface2); outline:none; margin-bottom:14px;
+  transition:border-color .15s;
+}
+.modal-input:focus { border-color:var(--accent); background:white; box-shadow:0 0 0 3px var(--accent-light); }
+textarea.modal-input { min-height:90px; resize:vertical; }
+
+.btn-primary { background:var(--accent); color:white; border:none; padding:8px 18px; border-radius:var(--radius2); font-size:.78rem; font-weight:700; cursor:pointer; }
+.btn-primary:hover { background:#4a59df; }
+.btn-primary:disabled { background:var(--border2); color:var(--text3); cursor:not-allowed; }
+.btn-secondary { background:var(--surface2); color:var(--text2); border:1px solid var(--border2); padding:8px 16px; border-radius:var(--radius2); font-size:.78rem; font-weight:600; cursor:pointer; }
+.btn-secondary:hover { border-color:var(--border); color:var(--text); }
+
+/* loading */
+.generating-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; padding:28px 0; }
+.spinner { width:36px; height:36px; border:3px solid var(--accent-light); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.generating-text { font-size:.78rem; color:var(--text3); font-style:italic; }
+
+/* generated questions */
+.gen-intro { font-size:.75rem; color:var(--text2); margin-bottom:12px; line-height:1.5; }
+.gen-q-item {
+  background:var(--accent-light); border:1px solid #c8cffb;
+  border-radius:var(--radius2); padding:10px 12px; margin-bottom:8px;
+  display:flex; align-items:flex-start; gap:8px;
+}
+.gen-q-num { background:var(--accent); color:white; width:20px; height:20px; border-radius:50%; font-size:.62rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.gen-q-text { font-size:.8rem; color:var(--text); font-weight:600; line-height:1.35; flex:1; }
+.gen-section-label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--accent); margin-bottom:8px; margin-top:4px; }
+
+/* history modal */
+.h-entry { padding:13px 0; border-bottom:1px solid var(--border); }
+.h-entry:last-child { border-bottom:none; }
+.h-entry-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+.h-date { font-size:.7rem; font-weight:700; color:var(--text3); }
+.h-words { font-size:.65rem; color:var(--text3); background:var(--surface2); border:1px solid var(--border); padding:1px 7px; border-radius:20px; }
+.h-text { font-size:.82rem; color:var(--text2); line-height:1.65; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="app-header">
+  <div class="header-logo">Lars <span>Knowledge System</span></div>
+  <div class="header-right">
+    <div class="progress-pill">
+      <span id="pct-text">0%</span>
+      <div class="pbm"><div class="pbmf" id="pct-bar" style="width:0%"></div></div>
+    </div>
+    <button class="btn-export">Exportar JSON</button>
+  </div>
+</div>
+
+<!-- INSTRUCCIONES -->
+<div class="instructions-panel">
+  <div class="instr-inner">
+    <div class="instr-top">
+      <div class="instr-title-block">
+        <div class="instr-title">Sistema de captura de metodología</div>
+        <div class="instr-subtitle">Este sistema recoge cómo trabajas tú — tu proceso, tu criterio, tus patrones. Cada card es una pregunta sobre tu metodología. Respóndelas en el orden que quieras, en las sesiones que necesites.</div>
+      </div>
+      <button class="btn-new-process" onclick="openProposeModal()">
+        <span class="btn-new-process-icon">＋</span> Proponer nuevo proceso
+      </button>
+    </div>
+    <div class="instr-steps">
+      <div class="instr-step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Escribe o dicta</strong> tu respuesta en cada card. Puedes hacerlo en varias sesiones.</div>
+      </div>
+      <div class="instr-step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Guarda cada entrada.</strong> El historial queda guardado por fecha.</div>
+      </div>
+      <div class="instr-step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Marca como completada</strong> cuando hayas cubierto bien esa pregunta.</div>
+      </div>
+      <div class="instr-step">
+        <div class="step-num">4</div>
+        <div class="step-text"><strong>¿Falta un proceso?</strong> Usa "Proponer nuevo proceso" y el sistema genera las preguntas.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CARDS -->
+<div class="main-wrap">
+  <div class="cards-grid" id="cards-grid"></div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openProposeModal()" title="Proponer nuevo proceso">+</button>
+<div class="fab-label">Proponer nuevo proceso</div>
+
+<!-- MODAL: HISTORIAL -->
+<div class="modal-overlay" id="modal-hist" onclick="closeModalIfOutside(event,'modal-hist')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="hist-q-title"></div>
+        <div class="modal-subtitle">📅 Historial de sesiones</div>
+      </div>
+      <button class="btn-close" onclick="closeModal('modal-hist')">✕</button>
+    </div>
+    <div class="modal-body" id="hist-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: PROPONER NUEVO PROCESO -->
+<div class="modal-overlay" id="modal-propose" onclick="closeModalIfOutside(event,'modal-propose')">
+  <div class="modal-box">
+
+    <!-- STEP 1: Describir proceso -->
+    <div id="step-1">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Proponer nuevo proceso</div>
+          <div class="modal-subtitle">Describe el proceso y el sistema generará las preguntas</div>
+        </div>
+        <button class="btn-close" onclick="closeModal('modal-propose')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-label">Nombre del proceso</div>
+        <div class="field-hint">Ej: "Entrevista de diagnóstico inicial", "Revisión de documentación interna"</div>
+        <input type="text" class="modal-input" id="prop-name" placeholder="Nombre del proceso…">
+
+        <div class="field-label">Describe el proceso con detalle</div>
+        <div class="field-hint">Cuanto más contexto des, mejores serán las preguntas generadas. Explica qué haces, cuándo lo haces, qué buscas con este paso y qué suele pasar.</div>
+        <textarea class="modal-input" id="prop-context" placeholder="Describe cómo funciona este proceso en tu metodología…"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modal-propose')">Cancelar</button>
+        <button class="btn-primary" id="btn-generar" onclick="startGenerating()">✨ Generar preguntas</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Generando -->
+    <div id="step-2" style="display:none">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="step2-title"></div>
+          <div class="modal-subtitle">Analizando tu metodología…</div>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="generating-wrap">
+          <div class="spinner"></div>
+          <div class="generating-text">Generando preguntas basadas en tu contexto…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Revisar preguntas generadas -->
+    <div id="step-3" style="display:none">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="step3-title"></div>
+          <div class="modal-subtitle">Preguntas generadas — revísalas antes de añadir</div>
+        </div>
+        <button class="btn-close" onclick="closeModal('modal-propose')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="gen-intro" id="gen-intro"></div>
+        <div class="gen-section-label">PREGUNTAS GENERADAS</div>
+        <div id="gen-questions-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="showStep(1)">← Volver a editar</button>
+        <button class="btn-primary" onclick="confirmNewCards()">Añadir cards al sistema →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────
+let QUESTIONS = [
+  { id:'q1', sec:'Perfil de auditor',    title:'¿Cuántas auditorías haces al año y cómo de diferentes son entre sí?',       isNew:false },
+  { id:'q2', sec:'Perfil de auditor',    title:'¿Cuál es el perfil típico de empresa que auditas?',                         isNew:false },
+  { id:'q3', sec:'Tu proceso completo',  title:'¿Cuáles son las fases de tu proceso de auditoría de principio a fin?',      isNew:false },
+  { id:'q4', sec:'Tu proceso completo',  title:'¿Qué documentación o información pides antes de empezar?',                  isNew:false },
+  { id:'q5', sec:'Hallazgos',            title:'¿Cuáles son los 5 problemas más frecuentes que encuentras?',                isNew:false },
+  { id:'q6', sec:'El entregable',        title:'¿Cómo estructuras el informe final? ¿Qué secciones tiene siempre?',         isNew:false },
+  { id:'q7', sec:'Cómo funciona',        title:'¿Cómo distingues si un proceso funciona bien o mal?',                       isNew:false },
+  { id:'q8', sec:'Límites',              title:'¿Qué partes de tu trabajo crees que NO se pueden sistematizar?',            isNew:false },
+];
+
+const STATE = {
+  entries: {
+    q2: [
+      { date:'13 abr 2026', text:'Pymes de entre 20 y 200 personas. Principalmente servicios profesionales. El momento típico es cuando llevan 5 años y sienten que algo no escala bien.' },
+      { date:'14 abr 2026', text:'Añado que también trabajo con empresas familiares en transición — ahí el problema mezcla lo profesional y lo personal.' }
+    ],
+    q5: [
+      { date:'14 abr 2026', text:'El más frecuente: falta de claridad en roles. Nadie sabe quién decide qué. El segundo: procesos que viven en la cabeza de una persona clave.' }
+    ],
+  },
+  done:   { q2: true },
+  drafts: {},
+};
+
+let micState   = {};
+let dragSrcId  = null;
+let genPayload = null; // {name, questions}
+
+// ─── RENDER ─────────────────────────────────────────────────
+function render() {
+  const grid = document.getElementById('cards-grid');
+  grid.innerHTML = QUESTIONS.map((q, idx) => cardHTML(q, idx + 1)).join('');
+  setupDrag();
+  updateProgress();
+}
+
+function getStatus(id) {
+  const q = QUESTIONS.find(x => x.id === id);
+  if (STATE.done[id]) return 'done';
+  if (q?.isNew && !(STATE.entries[id]||[]).length) return 'new';
+  if ((STATE.entries[id]||[]).length > 0) return 'partial';
+  return 'empty';
+}
+
+function cardHTML(q, idx) {
+  const status  = getStatus(q.id);
+  const entries = STATE.entries[q.id] || [];
+  const isDone  = status === 'done';
+  const isNew   = q.isNew && status !== 'done' && status !== 'partial';
+  const draft   = STATE.drafts[q.id] || '';
+  const sc = { done:'stripe-done', partial:'stripe-partial', empty:'stripe-empty', new:'stripe-new' }[status];
+  const nc = { done:'q-num-done',  partial:'q-num-partial',  empty:'q-num-empty',  new:'q-num-new'  }[status];
+  const ni = isDone ? '✓' : idx;
+  const secBadgeClass = isNew ? 'q-section-badge badge-new' : 'q-section-badge';
+  const secLabel = isNew ? '✦ ' + q.sec : q.sec;
+
+  return `
+    <div class="q-card" id="card_${q.id}" draggable="true">
+      <div class="q-stripe ${sc}"></div>
+      <div class="q-card-head">
+        <div class="drag-handle" title="Arrastra para reordenar">⠿</div>
+        <div class="head-content">
+          <div class="q-meta-row">
+            <div class="q-num ${nc}">${ni}</div>
+            <span class="${secBadgeClass}">${secLabel}</span>
+          </div>
+          <div class="q-title">${q.title}</div>
+        </div>
+      </div>
+      <div class="q-compose">
+        <div class="compose-mic-row">
+          <span class="compose-label">✏️ Respuesta de hoy</span>
+          <button class="btn-mic" id="mic_${q.id}" onclick="toggleMic('${q.id}')">🎙 Dictar</button>
+        </div>
+        <div class="mic-bar" id="micbar_${q.id}"><div class="mic-dot"></div><span>Escuchando…</span></div>
+        <textarea class="compose-ta" id="ta_${q.id}"
+          placeholder="Escribe o dicta tu respuesta…"
+          oninput="onInput('${q.id}')">${draft}</textarea>
+        <div class="compose-footer-row">
+          <span class="compose-wc" id="wc_${q.id}">${countWords(draft)} palabras</span>
+          <button class="btn-save" id="save_${q.id}" onclick="saveEntry('${q.id}')"
+            ${draft.trim()?'':'disabled'}>Guardar entrada →</button>
+        </div>
+      </div>
+      <div class="q-card-footer">
+        <button class="btn-mark-done ${isDone?'marked':'unmarked'}" onclick="toggleDone('${q.id}')">
+          ${isDone ? '✓ Completada' : 'Marcar completada'}
+        </button>
+        ${entries.length > 0
+          ? `<button class="btn-hist" onclick="openHistModal('${q.id}')">📅 Historial <span class="h-badge">${entries.length}</span></button>`
+          : `<span class="no-entries">Sin entradas aún</span>`}
+      </div>
+    </div>`;
+}
+
+function countWords(t) { return t.trim().split(/\s+/).filter(Boolean).length; }
+
+function updateProgress() {
+  const done = QUESTIONS.filter(q => STATE.done[q.id]).length;
+  const pct  = Math.round(done / QUESTIONS.length * 100);
+  document.getElementById('pct-text').textContent = pct + '%';
+  document.getElementById('pct-bar').style.width  = pct + '%';
+}
+
+// ─── DRAG & DROP ────────────────────────────────────────────
+function setupDrag() {
+  document.querySelectorAll('.q-card').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragSrcId = card.id.replace('card_', '');
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('drag-over'));
+      if (card.id !== 'card_' + dragSrcId) card.classList.add('drag-over');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      const targetId = card.id.replace('card_', '');
+      if (dragSrcId && targetId && dragSrcId !== targetId) {
+        const srcIdx = QUESTIONS.findIndex(q => q.id === dragSrcId);
+        const tgtIdx = QUESTIONS.findIndex(q => q.id === targetId);
+        const [moved] = QUESTIONS.splice(srcIdx, 1);
+        QUESTIONS.splice(tgtIdx, 0, moved);
+        // preserve drafts in textarea before re-render
+        document.querySelectorAll('.compose-ta').forEach(ta => {
+          const id = ta.id.replace('ta_', '');
+          STATE.drafts[id] = ta.value;
+        });
+        render();
+      }
+    });
+  });
+}
+
+// ─── COMPOSE ────────────────────────────────────────────────
+function onInput(id) {
+  const val = document.getElementById(`ta_${id}`).value;
+  STATE.drafts[id] = val;
+  document.getElementById(`wc_${id}`).textContent = countWords(val) + ' palabras';
+  document.getElementById(`save_${id}`).disabled = !val.trim();
+}
+
+function saveEntry(id) {
+  const ta   = document.getElementById(`ta_${id}`);
+  const text = ta.value.trim(); if (!text) return;
+  const today = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+  STATE.entries[id] = STATE.entries[id] || [];
+  STATE.entries[id].push({ date:today, text });
+  STATE.drafts[id] = '';
+  ta.classList.add('saved');
+  setTimeout(() => ta.classList.remove('saved'), 800);
+  render();
+}
+
+function toggleDone(id) {
+  STATE.done[id] = !STATE.done[id]; render();
+}
+
+// ─── HISTORIAL MODAL ────────────────────────────────────────
+function openHistModal(id) {
+  const q       = QUESTIONS.find(x => x.id === id);
+  const entries = (STATE.entries[id] || []).slice().reverse();
+  document.getElementById('hist-q-title').textContent = q.title;
+  document.getElementById('hist-body').innerHTML = entries.map(e => `
+    <div class="h-entry">
+      <div class="h-entry-head">
+        <span class="h-date">📅 ${e.date}</span>
+        <span class="h-words">${countWords(e.text)} palabras</span>
+      </div>
+      <div class="h-text">${e.text}</div>
+    </div>`).join('');
+  openModal('modal-hist');
+}
+
+// ─── PROPOSE MODAL ──────────────────────────────────────────
+function openProposeModal() {
+  document.getElementById('prop-name').value    = '';
+  document.getElementById('prop-context').value = '';
+  showStep(1);
+  openModal('modal-propose');
+}
+
+function showStep(n) {
+  [1,2,3].forEach(i => document.getElementById(`step-${i}`).style.display = i === n ? 'flex' : 'none');
+  document.getElementById(`step-${n}`).style.flexDirection = 'column';
+}
+
+// Preguntas demo generadas (simulan lo que haría Claude)
+const DEMO_GENERATED = [
+  { title:'¿Cuál es el objetivo principal de este proceso y cuándo lo aplicas exactamente?' },
+  { title:'¿Qué inputs necesitas para poder ejecutarlo? ¿De dónde vienen esos datos?' },
+  { title:'¿Cuáles son los pasos concretos que sigues dentro de este proceso, en orden?' },
+  { title:'¿Cómo sabes que este proceso ha funcionado bien? ¿Qué señales buscas?' },
+];
+
+function startGenerating() {
+  const name    = document.getElementById('prop-name').value.trim();
+  const context = document.getElementById('prop-context').value.trim();
+  if (!name || !context) {
+    alert('Rellena el nombre y la descripción antes de generar.');
+    return;
+  }
+  document.getElementById('step2-title').textContent = name;
+  showStep(2);
+
+  // Simula 2s de generación
+  setTimeout(() => {
+    genPayload = { name, questions: DEMO_GENERATED };
+    document.getElementById('step3-title').textContent = name;
+    document.getElementById('gen-intro').innerHTML =
+      `El sistema ha analizado tu descripción y propone <strong>${DEMO_GENERATED.length} preguntas</strong> para profundizar en este proceso. Revísalas y añádelas cuando estés listo.`;
+    document.getElementById('gen-questions-list').innerHTML = DEMO_GENERATED.map((q, i) => `
+      <div class="gen-q-item">
+        <div class="gen-q-num">${i + 1}</div>
+        <div class="gen-q-text">${q.title}</div>
+      </div>`).join('');
+    showStep(3);
+  }, 2000);
+}
+
+function confirmNewCards() {
+  if (!genPayload) return;
+  const newCards = genPayload.questions.map((q, i) => ({
+    id:    'custom_' + Date.now() + '_' + i,
+    sec:   genPayload.name,
+    title: q.title,
+    isNew: true,
+  }));
+  QUESTIONS = QUESTIONS.concat(newCards);
+  closeModal('modal-propose');
+  render();
+  // Scroll a las nuevas cards
+  setTimeout(() => {
+    const last = document.getElementById('card_' + newCards[newCards.length - 1].id);
+    if (last) last.scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 100);
+}
+
+// ─── MODAL HELPERS ──────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeModalIfOutside(e, id) {
+  if (e.target === document.getElementById(id)) closeModal(id);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['modal-hist','modal-propose'].forEach(id => {
+      if (document.getElementById(id).classList.contains('open')) closeModal(id);
+    });
+  }
+});
+
+// ─── MIC ────────────────────────────────────────────────────
+function toggleMic(id) {
+  const ms = micState[id];
+  if (ms && ms.isRecording) stopMic(id); else startMic(id);
+}
+function startMic(id) {
+  micState[id] = { isRecording:true };
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ta = document.getElementById(`ta_${id}`);
+  if (SR) {
+    const rec = new SR();
+    rec.lang='es-ES'; rec.continuous=true; rec.interimResults=true;
+    const base = ta.value; let final = '';
+    rec.onresult = e => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
+        else interim += e.results[i][0].transcript;
+      }
+      ta.value = (base.trim() ? base.trimEnd() + ' ' : '') + final + interim;
+      ta.scrollTop = ta.scrollHeight; onInput(id);
+    };
+    rec.onend = () => { if (micState[id]?.isRecording) { try { rec.start(); } catch(e){} } };
+    rec.start(); micState[id].recognition = rec;
+  } else {
+    const words = [' Hago',' unas',' doce',' auditorías',' al',' año.',' Cada',' una',' distinta.'];
+    let i = 0;
+    micState[id].timer = setInterval(() => {
+      if (i >= words.length) { stopMic(id); return; }
+      ta.value += words[i++]; ta.scrollTop = ta.scrollHeight; onInput(id);
+    }, 140);
+  }
+  setMicUI(id, true);
+}
+function stopMic(id) {
+  const ms = micState[id]; if (!ms) return;
+  if (ms.recognition) { try { ms.recognition.stop(); } catch(e){} }
+  if (ms.timer) clearInterval(ms.timer);
+  micState[id] = { isRecording:false };
+  setMicUI(id, false);
+}
+function setMicUI(id, on) {
+  const btn = document.getElementById(`mic_${id}`);
+  const bar = document.getElementById(`micbar_${id}`);
+  if (!btn) return;
+  btn.classList.toggle('recording', on);
+  btn.innerHTML = on ? '⏹ Parar' : '🎙 Dictar';
+  bar.classList.toggle('active', on);
+}
+
+render();
+</script>
+</body>
+</html>

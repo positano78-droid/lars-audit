@@ -1,0 +1,6 @@
+{
+  "project": "Lars Knowledge System",
+  "version": "1.0",
+  "phase": "1",
+  "description": "Herramienta de extracción de conocimiento experto de Lars para construir el sistema de auditorías de cliente"
+}

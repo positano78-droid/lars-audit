@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lars Knowledge System</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f0f0f5;
+  --surface: #fff;
+  --surface2: #f8f8fb;
+  --border: #e4e4ec;
+  --border2: #d0d0e0;
+  --text: #1a1a2e;
+  --text2: #555570;
+  --text3: #9090aa;
+  --accent: #5b6af0;
+  --accent-light: #eef0fe;
+  --accent2: #22c27a;
+  --accent2-light: #e8faf2;
+  --warn: #f59e0b;
+  --warn-light: #fef3c7;
+  --danger: #ef4444;
+  --radius: 14px;
+  --radius2: 8px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.07);
+  --shadow2: 0 8px 28px rgba(0,0,0,0.14);
+}
+body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; }
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay {
+  position:fixed; inset:0; z-index:9999;
+  background:var(--bg); display:flex; align-items:center; justify-content:center;
+  transition:opacity .4s;
+}
+.loading-overlay.hidden { opacity:0; pointer-events:none; }
+.loading-box {
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  background:var(--surface); border-radius:var(--radius); padding:36px 48px;
+  box-shadow:var(--shadow2); text-align:center;
+}
+.spinner-lg {
+  width:42px; height:42px; border:4px solid var(--accent-light);
+  border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite;
+}
+.loading-title { font-size:1rem; font-weight:800; color:var(--text); }
+.loading-msg { font-size:.78rem; color:var(--text3); }
+
+/* ── HEADER ── */
+.app-header {
+  background:var(--text); color:white; padding:0 24px; height:54px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:300; box-shadow:0 2px 8px rgba(0,0,0,0.25);
+}
+.header-logo { font-size:.9rem; font-weight:700; }
+.header-logo span { color:#7c8cf8; }
+.header-right { display:flex; align-items:center; gap:10px; }
+.progress-pill {
+  background:rgba(255,255,255,.1); border-radius:20px;
+  padding:4px 12px; font-size:.72rem; color:#c0c0e0;
+  display:flex; align-items:center; gap:8px;
+}
+.pbm { width:70px; height:3px; background:rgba(255,255,255,.15); border-radius:2px; overflow:hidden; }
+.pbmf { height:100%; background:#7c8cf8; border-radius:2px; transition:width .5s; }
+.session-badge {
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
+  border-radius:20px; padding:3px 10px; font-size:.68rem; color:#a0a0c8;
+}
+/* Sync badge */
+.sync-badge {
+  font-size:.68rem; font-weight:600; padding:3px 10px; border-radius:20px;
+  transition:all .3s;
+}
+.sync-badge.connecting { background:rgba(255,255,255,.08); color:#a0a0c8; }
+.sync-badge.ok         { background:rgba(34,194,122,.15);  color:#4ade80; }
+.sync-badge.syncing    { background:rgba(245,158,11,.15);  color:#fbbf24; animation:pulse-sync 1.2s ease-in-out infinite; }
+.sync-badge.offline    { background:rgba(239,68,68,.15);   color:#f87171; }
+@keyframes pulse-sync { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+.btn-export {
+  background:var(--accent); color:white; border:none;
+  padding:6px 14px; border-radius:var(--radius2); font-size:.75rem; font-weight:600; cursor:pointer;
+  transition:background .15s;
+}
+.btn-export:hover { background:#4a59df; }
+
+/* ── TABS ── */
+.tabs-nav {
+  background:var(--surface); border-bottom:2px solid var(--border);
+  display:flex; align-items:center; gap:0;
+  position:sticky; top:54px; z-index:290;
+  padding:0 24px;
+}
+.tab-btn {
+  background:none; border:none; cursor:pointer;
+  padding:12px 18px; font-size:.82rem; font-weight:600; color:var(--text3);
+  border-bottom:3px solid transparent; margin-bottom:-2px;
+  transition:color .15s, border-color .15s;
+}
+.tab-btn:hover { color:var(--text2); }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* ── INSTRUCCIONES ── */
+.instructions-panel {
+  background:var(--surface); border-bottom:2px solid var(--border);
+  padding:20px 24px;
+}
+.instr-inner { max-width:940px; margin:0 auto; }
+.instr-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.instr-title { font-size:1.1rem; font-weight:800; color:var(--text); margin-bottom:4px; }
+.instr-subtitle { font-size:.77rem; color:var(--text2); line-height:1.5; max-width:580px; }
+.btn-new-process {
+  display:flex; align-items:center; gap:7px; flex-shrink:0;
+  background:var(--accent); color:white; border:none;
+  padding:10px 18px; border-radius:var(--radius2);
+  font-size:.82rem; font-weight:700; cursor:pointer;
+  box-shadow:0 3px 10px rgba(91,106,240,.35);
+  transition:transform .15s, box-shadow .15s;
+}
+.btn-new-process:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(91,106,240,.45); }
+.instr-steps { display:flex; gap:10px; flex-wrap:wrap; }
+.instr-step {
+  display:flex; align-items:flex-start; gap:8px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:var(--radius2); padding:8px 12px; flex:1; min-width:150px;
+}
+.step-num {
+  width:20px; height:20px; border-radius:50%; background:var(--accent); color:white;
+  font-size:.62rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;
+}
+.step-text { font-size:.71rem; color:var(--text2); line-height:1.4; }
+.step-text strong { font-weight:700; color:var(--text); }
+
+/* ── LAYOUT ── */
+.main-wrap { max-width:940px; margin:0 auto; padding:24px 16px 100px; }
+.cards-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+
+/* ── CARD ── */
+.q-card {
+  background:var(--surface); border:1.5px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  overflow:hidden; position:relative; display:flex; flex-direction:column;
+  transition:box-shadow .15s, opacity .15s;
+}
+.q-card:focus-within { box-shadow:var(--shadow2); }
+.q-card.dragging { opacity:.35; }
+.q-card.drag-over { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-light); }
+
+.q-stripe { position:absolute; top:0; left:0; bottom:0; width:4px; border-radius:var(--radius) 0 0 var(--radius); }
+.stripe-empty   { background:var(--border2); }
+.stripe-partial { background:var(--warn); }
+.stripe-done    { background:var(--accent2); }
+.stripe-new     { background:var(--accent); }
+
+/* card head */
+.q-card-head { padding:11px 14px 9px 18px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:8px; }
+.drag-handle {
+  color:var(--text3); font-size:.95rem; cursor:grab; padding:2px 3px; margin-top:2px;
+  flex-shrink:0; user-select:none; border-radius:4px; line-height:1;
+  transition:color .1s;
+}
+.drag-handle:hover { color:var(--text2); }
+.drag-handle:active { cursor:grabbing; }
+.head-content { flex:1; min-width:0; }
+.q-meta-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.q-num {
+  width:21px; height:21px; border-radius:50%; font-size:.65rem; font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.q-num-empty   { background:var(--surface2); color:var(--text3); border:1px solid var(--border2); }
+.q-num-partial { background:var(--warn-light); color:#b45309; }
+.q-num-done    { background:var(--accent2-light); color:#15a068; }
+.q-num-new     { background:var(--accent-light); color:var(--accent); }
+.q-sec { font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text3); }
+.q-sec.sec-new { color:var(--accent); }
+.q-title { font-size:.83rem; font-weight:700; line-height:1.35; color:var(--text); }
+.q-context { font-size:.68rem; color:var(--text3); font-style:italic; margin-top:3px; line-height:1.35; }
+
+/* compose */
+.q-compose { padding:10px 14px 10px 18px; border-bottom:1px solid var(--border); flex:1; }
+.compose-top-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+.compose-label { font-size:.67rem; font-weight:700; color:var(--accent); }
+.btn-mic {
+  display:flex; align-items:center; gap:4px; padding:4px 10px;
+  background:var(--accent-light); border:1px solid #c8cffb;
+  border-radius:var(--radius2); font-size:.68rem; font-weight:600; color:var(--accent);
+  cursor:pointer; transition:all .15s;
+}
+.btn-mic:hover { background:var(--accent); color:white; border-color:var(--accent); }
+.btn-mic.recording { background:#fee2e2; border-color:#fca5a5; color:#dc2626; animation:pulse-rec 1.2s ease-in-out infinite; }
+@keyframes pulse-rec { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3)} 50%{box-shadow:0 0 0 5px rgba(239,68,68,0)} }
+.mic-bar {
+  display:none; align-items:center; gap:5px; padding:4px 8px;
+  background:#fee2e2; border-radius:var(--radius2); font-size:.67rem; color:#dc2626; font-weight:600; margin-bottom:6px;
+}
+.mic-bar.active { display:flex; }
+.mic-dot { width:6px; height:6px; border-radius:50%; background:#dc2626; animation:blink 1s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+.compose-ta {
+  width:100%; min-height:95px; border:1.5px solid var(--border); border-radius:var(--radius2);
+  background:var(--surface2); padding:9px 10px; font-family:inherit; font-size:.82rem;
+  color:var(--text); line-height:1.6; resize:vertical; outline:none;
+  transition:border-color .15s, background .15s;
+}
+.compose-ta:focus { border-color:var(--accent); background:white; box-shadow:0 0 0 3px var(--accent-light); }
+@keyframes flash-green { 0%{background:#f0fdf7} 100%{background:var(--surface2)} }
+.compose-ta.saved { animation:flash-green .8s ease; }
+
+.compose-footer-row { display:flex; align-items:center; justify-content:space-between; margin-top:7px; gap:8px; }
+.wc-wrap { display:flex; align-items:center; gap:6px; }
+.compose-wc { font-size:.67rem; color:var(--text3); }
+.wc-warning { font-size:.65rem; color:var(--warn); font-weight:600; display:none; }
+.wc-warning.show { display:inline; }
+.btn-save {
+  background:var(--accent); color:white; border:none;
+  padding:6px 14px; border-radius:var(--radius2); font-size:.71rem; font-weight:700; cursor:pointer;
+  white-space:nowrap; transition:background .15s;
+}
+.btn-save:hover { background:#4a59df; }
+.btn-save:disabled { background:var(--border2); color:var(--text3); cursor:not-allowed; }
+
+/* card footer */
+.q-card-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px 8px 18px; background:var(--surface2); border-top:1px solid var(--border);
+}
+.btn-mark-done { font-size:.67rem; font-weight:600; padding:4px 10px; border-radius:20px; border:1.5px solid; cursor:pointer; background:transparent; transition:all .15s; white-space:nowrap; }
+.btn-mark-done.unmarked { border-color:var(--border2); color:var(--text3); }
+.btn-mark-done.unmarked:hover { border-color:var(--accent2); color:#15a068; background:var(--accent2-light); }
+.btn-mark-done.marked { border-color:var(--accent2); color:#15a068; background:var(--accent2-light); }
+.btn-hist { display:flex; align-items:center; gap:5px; font-size:.67rem; font-weight:600; color:var(--accent); background:none; border:none; cursor:pointer; padding:4px 0; }
+.btn-hist:hover { opacity:.7; }
+.h-badge { background:var(--accent-light); color:var(--accent); font-size:.6rem; font-weight:700; padding:1px 6px; border-radius:20px; }
+.no-entries { font-size:.63rem; color:var(--text3); }
+
+/* ── FAB ── */
+.fab {
+  position:fixed; bottom:28px; right:28px; z-index:250;
+  background:var(--accent); color:white; border:none;
+  width:52px; height:52px; border-radius:50%; font-size:1.4rem; cursor:pointer;
+  box-shadow:0 4px 16px rgba(91,106,240,.45);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .15s, box-shadow .15s;
+}
+.fab:hover { transform:scale(1.08); box-shadow:0 6px 22px rgba(91,106,240,.55); }
+
+/* ── TOAST ── */
+.toast {
+  position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+  background:var(--text); color:white; padding:8px 18px; border-radius:20px;
+  font-size:.75rem; font-weight:600; z-index:400; opacity:0;
+  transition:opacity .2s; pointer-events:none;
+}
+.toast.show { opacity:1; }
+
+/* ══ MODALS ══ */
+.modal-overlay {
+  display:none; position:fixed; inset:0; z-index:500;
+  background:rgba(15,15,35,.5); backdrop-filter:blur(2px);
+  align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal-box {
+  background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow2);
+  width:94%; max-width:520px; max-height:86vh;
+  display:flex; flex-direction:column; overflow:hidden;
+  animation:modal-in .18s ease;
+}
+@keyframes modal-in { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
+.modal-header {
+  padding:14px 16px 12px; border-bottom:1px solid var(--border);
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-shrink:0;
+}
+.modal-title { font-size:.92rem; font-weight:700; color:var(--text); }
+.modal-subtitle { font-size:.71rem; color:var(--text3); margin-top:2px; }
+.btn-close { background:var(--surface2); border:1px solid var(--border2); border-radius:var(--radius2); width:28px; height:28px; font-size:.9rem; color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background .1s; }
+.btn-close:hover { background:var(--border); }
+.modal-body { overflow-y:auto; flex:1; padding:16px; }
+.modal-footer { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; flex-shrink:0; }
+
+/* history modal */
+.h-entry { padding:13px 0; border-bottom:1px solid var(--border); }
+.h-entry:last-child { border-bottom:none; }
+.h-entry-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+.h-entry-meta { display:flex; align-items:center; gap:8px; }
+.h-date { font-size:.7rem; font-weight:700; color:var(--text3); }
+.h-session { font-size:.65rem; color:var(--accent); background:var(--accent-light); padding:1px 7px; border-radius:20px; font-weight:600; }
+.h-words { font-size:.65rem; color:var(--text3); background:var(--surface2); border:1px solid var(--border); padding:1px 7px; border-radius:20px; }
+.h-text { font-size:.82rem; color:var(--text2); line-height:1.65; white-space:pre-wrap; }
+
+/* propose modal */
+.field-block { margin-bottom:14px; }
+.field-label { font-size:.72rem; font-weight:700; color:var(--text2); margin-bottom:4px; }
+.field-hint { font-size:.67rem; color:var(--text3); margin-bottom:6px; line-height:1.4; }
+.modal-input {
+  width:100%; border:1.5px solid var(--border); border-radius:var(--radius2);
+  padding:9px 11px; font-family:inherit; font-size:.83rem; color:var(--text);
+  background:var(--surface2); outline:none; transition:border-color .15s;
+}
+.modal-input:focus { border-color:var(--accent); background:white; box-shadow:0 0 0 3px var(--accent-light); }
+textarea.modal-input { min-height:90px; resize:vertical; }
+
+.btn-primary { background:var(--accent); color:white; border:none; padding:8px 18px; border-radius:var(--radius2); font-size:.78rem; font-weight:700; cursor:pointer; transition:background .15s; }
+.btn-primary:hover { background:#4a59df; }
+.btn-primary:disabled { background:var(--border2); color:var(--text3); cursor:not-allowed; }
+.btn-secondary { background:var(--surface2); color:var(--text2); border:1px solid var(--border2); padding:8px 16px; border-radius:var(--radius2); font-size:.78rem; font-weight:600; cursor:pointer; transition:border-color .1s; }
+.btn-secondary:hover { border-color:var(--border); color:var(--text); }
+
+.generating-wrap { display:flex; flex-direction:column; align-items:center; gap:14px; padding:32px 0; }
+.spinner { width:36px; height:36px; border:3px solid var(--accent-light); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.generating-text { font-size:.78rem; color:var(--text3); font-style:italic; }
+
+.gen-intro { font-size:.75rem; color:var(--text2); margin-bottom:12px; line-height:1.5; background:var(--accent-light); border-radius:var(--radius2); padding:10px 12px; }
+.gen-q-item { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius2); padding:10px 12px; margin-bottom:8px; display:flex; align-items:flex-start; gap:8px; }
+.gen-q-num { background:var(--accent); color:white; width:20px; height:20px; border-radius:50%; font-size:.62rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.gen-q-text { font-size:.8rem; color:var(--text); font-weight:600; line-height:1.35; flex:1; }
+
+/* ══ SECTIONS STRIP ══ */
+.sections-strip { background:var(--surface); border-bottom:2px solid var(--border); padding:10px 24px; }
+.sections-strip-inner { max-width:940px; margin:0 auto; }
+.sections-strip-label { font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); margin-bottom:7px; }
+.sections-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.sec-item {
+  display:flex; align-items:center; gap:7px;
+  background:var(--surface2); border:1.5px solid var(--border);
+  border-radius:var(--radius2); padding:7px 10px; transition:border-color .15s;
+}
+.sec-item.done    { border-color:var(--accent2); background:var(--accent2-light); }
+.sec-item.partial { border-color:var(--warn);    background:var(--warn-light); }
+.sec-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sec-dot.done    { background:var(--accent2); }
+.sec-dot.partial { background:var(--warn); }
+.sec-dot.empty   { background:var(--border2); }
+.sec-info { flex:1; min-width:0; }
+.sec-name  { font-size:.69rem; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sec-count { font-size:.61rem; color:var(--text3); }
+.sec-item.done .sec-count    { color:#15a068; }
+.sec-item.partial .sec-count { color:#b45309; }
+.sec-check { font-size:.72rem; color:var(--accent2); font-weight:800; flex-shrink:0; }
+
+/* ══ DUDAS ══ */
+.dudas-wrap { max-width:940px; margin:0 auto; padding:24px 16px 100px; }
+.doubt-card {
+  background:var(--surface); border:1.5px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:14px 16px; margin-bottom:10px;
+}
+.doubt-meta { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.doubt-text { font-size:.83rem; color:var(--text); line-height:1.6; white-space:pre-wrap; margin-bottom:10px; }
+.doubt-actions { display:flex; gap:6px; }
+
+/* ══ REMINDER MODAL ══ */
+.reminder-entry { padding:10px 0; border-bottom:1px solid var(--border); }
+.reminder-entry:last-child { border-bottom:none; }
+.reminder-q { font-size:.78rem; font-weight:700; color:var(--text); margin-bottom:5px; }
+.reminder-excerpt { font-size:.76rem; color:var(--text2); line-height:1.55; }
+
+/* ══ RAG SPACE ══ */
+.rag-wrap { max-width:940px; margin:0 auto; padding:24px 16px 100px; }
+.rag-header-row { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.rag-title { font-size:1.1rem; font-weight:800; color:var(--text); margin-bottom:4px; }
+.rag-subtitle { font-size:.77rem; color:var(--text2); line-height:1.5; max-width:560px; }
+
+/* Upload card */
+.upload-card {
+  background:var(--surface); border:1.5px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 22px; margin-bottom:22px;
+}
+.upload-card-title { font-size:.85rem; font-weight:700; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+.upload-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+.upload-field-full { grid-column:1/-1; }
+.upload-label { font-size:.7rem; font-weight:700; color:var(--text2); margin-bottom:4px; }
+.upload-input {
+  width:100%; border:1.5px solid var(--border); border-radius:var(--radius2);
+  padding:8px 10px; font-family:inherit; font-size:.82rem; color:var(--text);
+  background:var(--surface2); outline:none; transition:border-color .15s;
+}
+.upload-input:focus { border-color:var(--accent); background:white; box-shadow:0 0 0 3px var(--accent-light); }
+textarea.upload-input { min-height:72px; resize:vertical; }
+
+.file-drop-zone {
+  border:2px dashed var(--border2); border-radius:var(--radius2);
+  padding:24px 16px; text-align:center; cursor:pointer;
+  transition:border-color .15s, background .15s; background:var(--surface2);
+}
+.file-drop-zone:hover, .file-drop-zone.drag-over-zone { border-color:var(--accent); background:var(--accent-light); }
+.file-drop-zone.has-file { border-color:var(--accent2); background:var(--accent2-light); border-style:solid; }
+.drop-icon { font-size:1.6rem; margin-bottom:6px; }
+.drop-text { font-size:.78rem; color:var(--text2); font-weight:600; }
+.drop-sub { font-size:.68rem; color:var(--text3); margin-top:3px; }
+.file-name-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--accent2-light); border:1px solid #a3e9cc;
+  border-radius:20px; padding:3px 10px; font-size:.72rem; font-weight:600; color:#15a068;
+  margin-top:6px;
+}
+.btn-clear-file {
+  background:none; border:none; cursor:pointer; color:#15a068; font-size:.8rem; line-height:1; padding:0 2px;
+}
+.btn-clear-file:hover { color:var(--danger); }
+
+.upload-footer { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:12px; }
+.upload-progress {
+  flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; display:none;
+}
+.upload-progress.visible { display:block; }
+.upload-progress-bar { height:100%; background:var(--accent); border-radius:2px; transition:width .3s; }
+.btn-upload {
+  background:var(--accent); color:white; border:none;
+  padding:8px 20px; border-radius:var(--radius2); font-size:.78rem; font-weight:700; cursor:pointer;
+  transition:background .15s; white-space:nowrap;
+}
+.btn-upload:hover { background:#4a59df; }
+.btn-upload:disabled { background:var(--border2); color:var(--text3); cursor:not-allowed; }
+
+/* Docs list */
+.docs-section-title {
+  font-size:.78rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.5px;
+  margin-bottom:10px;
+}
+.rag-empty {
+  background:var(--surface); border:1.5px dashed var(--border2);
+  border-radius:var(--radius); padding:40px 24px; text-align:center;
+  color:var(--text3); font-size:.82rem;
+}
+.rag-empty-icon { font-size:2rem; margin-bottom:8px; }
+.rag-empty-title { font-weight:700; color:var(--text2); margin-bottom:4px; }
+.rag-docs-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.rag-doc-card {
+  background:var(--surface); border:1.5px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:14px 16px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.rag-doc-name { font-size:.85rem; font-weight:700; color:var(--text); }
+.rag-doc-desc { font-size:.75rem; color:var(--text2); line-height:1.4; }
+.rag-doc-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.rag-doc-badge {
+  font-size:.63rem; font-weight:600; padding:2px 8px; border-radius:20px;
+  background:var(--surface2); border:1px solid var(--border); color:var(--text3);
+}
+.rag-doc-actions { display:flex; gap:6px; margin-top:4px; }
+.btn-doc-action {
+  font-size:.7rem; font-weight:600; padding:5px 12px; border-radius:var(--radius2);
+  cursor:pointer; transition:all .15s; border:1.5px solid;
+}
+.btn-doc-download { background:var(--accent-light); color:var(--accent); border-color:#c8cffb; }
+.btn-doc-download:hover { background:var(--accent); color:white; border-color:var(--accent); }
+.btn-doc-delete { background:transparent; color:var(--text3); border-color:var(--border2); }
+.btn-doc-delete:hover { background:#fee2e2; color:var(--danger); border-color:#fca5a5; }
+</style>
+</head>
+<body>
+
+<!-- ── LOADING OVERLAY ── -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="loading-box">
+    <div class="spinner-lg"></div>
+    <div class="loading-title">Lars Knowledge System</div>
+    <div class="loading-msg" id="loading-msg">Conectando con la nube…</div>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<div class="app-header">
+  <div class="header-logo">Lars <span>Knowledge System</span></div>
+  <div class="header-right">
+    <div class="sync-badge connecting" id="sync-badge">↻ Conectando</div>
+    <div class="session-badge" id="session-badge">Sesión 1</div>
+    <div class="progress-pill">
+      <span id="pct-text">0%</span>
+      <div class="pbm"><div class="pbmf" id="pct-bar" style="width:0%"></div></div>
+    </div>
+    <button class="btn-export" onclick="exportJSON()">Exportar JSON</button>
+  </div>
+</div>
+
+<!-- ── TABS NAV ── -->
+<div class="tabs-nav">
+  <button class="tab-btn active" id="tab-btn-metodologia" onclick="showTab('metodologia')">📋 Metodología</button>
+  <button class="tab-btn" id="tab-btn-rag" onclick="showTab('rag')">📁 RAG Space</button>
+  <button class="tab-btn" id="tab-btn-dudas" onclick="showTab('dudas')">📝 Dudas</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB: METODOLOGÍA
+═══════════════════════════════════════════ -->
+<div class="tab-content active" id="tab-metodologia">
+
+  <!-- INSTRUCCIONES -->
+  <div class="instructions-panel">
+    <div class="instr-inner">
+      <div class="instr-top">
+        <div>
+          <div class="instr-title">Sistema de captura de metodología</div>
+          <div class="instr-subtitle">Este sistema recoge cómo trabajas tú — tu proceso, tu criterio, tus patrones. Cada card es una pregunta sobre tu metodología. Respóndelas en el orden que prefieras y en las sesiones que necesites. Todo queda guardado automáticamente en la nube.</div>
+        </div>
+        <button class="btn-new-process" onclick="openProposeModal()">＋ Proponer nuevo proceso</button>
+      </div>
+      <div class="instr-steps">
+        <div class="instr-step"><div class="step-num">1</div><div class="step-text"><strong>Escribe o dicta</strong> tu respuesta en cada card. Puedes hacerlo en varias sesiones.</div></div>
+        <div class="instr-step"><div class="step-num">2</div><div class="step-text"><strong>Guarda cada entrada.</strong> El historial queda guardado por sesión y fecha.</div></div>
+        <div class="instr-step"><div class="step-num">3</div><div class="step-text"><strong>Marca como completada</strong> cuando hayas cubierto bien una pregunta.</div></div>
+        <div class="instr-step"><div class="step-num">4</div><div class="step-text"><strong>¿Falta un proceso?</strong> Usa el botón de arriba y el sistema genera las preguntas.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTIONS STRIP -->
+  <div class="sections-strip">
+    <div class="sections-strip-inner">
+      <div class="sections-strip-label">Progreso por sección</div>
+      <div class="sections-grid" id="sections-grid"></div>
+    </div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="main-wrap">
+    <div class="cards-grid" id="cards-grid"></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB: RAG SPACE
+═══════════════════════════════════════════ -->
+<div class="tab-content" id="tab-rag">
+  <div class="rag-wrap">
+
+    <div class="rag-header-row">
+      <div>
+        <div class="rag-title">RAG Space</div>
+        <div class="rag-subtitle">Sube aquí tus informes reales de auditoría, plantillas y referencias. Estos documentos alimentarán directamente el motor de Phase 2 — el sistema de auditorías para clientes.</div>
+      </div>
+    </div>
+
+    <!-- Upload card -->
+    <div class="upload-card">
+      <div class="upload-card-title">📎 Subir documento</div>
+      <div class="upload-fields">
+        <div>
+          <div class="upload-label">Nombre del documento</div>
+          <input type="text" class="upload-input" id="rag-name" placeholder="Informe auditoría empresa X…">
+        </div>
+        <div>
+          <div class="upload-label">Tipo</div>
+          <select class="upload-input" id="rag-type">
+            <option value="informe">Informe de auditoría</option>
+            <option value="plantilla">Plantilla</option>
+            <option value="referencia">Material de referencia</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="upload-field-full">
+          <div class="upload-label">Descripción (opcional)</div>
+          <textarea class="upload-input" id="rag-desc" placeholder="Qué contiene este documento, para qué sirve…"></textarea>
+        </div>
+        <div class="upload-field-full">
+          <div class="upload-label">Archivo</div>
+          <input type="file" id="rag-file-input" style="display:none" onchange="onFileSelected(this)">
+          <div class="file-drop-zone" id="rag-drop-zone"
+            onclick="document.getElementById('rag-file-input').click()"
+            ondragover="onDropZoneDragOver(event)"
+            ondragleave="onDropZoneDragLeave(event)"
+            ondrop="onDropZoneDrop(event)">
+            <div class="drop-icon">📄</div>
+            <div class="drop-text" id="drop-text">Haz clic o arrastra un archivo aquí</div>
+            <div class="drop-sub" id="drop-sub">PDF, DOCX, XLSX, TXT — hasta 50 MB</div>
+          </div>
+        </div>
+      </div>
+      <div class="upload-footer">
+        <div class="upload-progress" id="upload-progress">
+          <div class="upload-progress-bar" id="upload-progress-bar" style="width:0%"></div>
+        </div>
+        <button class="btn-upload" id="btn-upload" onclick="uploadDocument()" disabled>Subir documento</button>
+      </div>
+    </div>
+
+    <!-- Docs list -->
+    <div class="docs-section-title">Documentos subidos</div>
+    <div id="rag-docs-container">
+      <div class="rag-empty">
+        <div class="rag-empty-icon">📁</div>
+        <div class="rag-empty-title">Aún no hay documentos</div>
+        <div>Sube tu primer informe o plantilla usando el formulario de arriba.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB: DUDAS
+═══════════════════════════════════════════ -->
+<div class="tab-content" id="tab-dudas">
+  <div class="dudas-wrap">
+    <div class="rag-header-row">
+      <div>
+        <div class="rag-title">📝 Dudas y preguntas</div>
+        <div class="rag-subtitle">Anota aquí todo lo que quieras preguntar o clarificar. Queda guardado para revisarlo juntos.</div>
+      </div>
+    </div>
+    <div class="upload-card">
+      <div class="upload-card-title">💬 Nueva duda</div>
+      <div class="compose-top-row" style="margin-bottom:7px">
+        <span class="compose-label">Escribe o dicta</span>
+        <button class="btn-mic" id="mic_doubt" onclick="toggleMicDoubt()">🎙 Dictar</button>
+      </div>
+      <div class="mic-bar" id="micbar_doubt"><div class="mic-dot"></div><span>Escuchando…</span></div>
+      <textarea class="compose-ta" id="ta_doubt" placeholder="¿Qué quieres preguntar o aclarar?…" oninput="onDoubtInput()" style="min-height:110px"></textarea>
+      <div class="compose-footer-row" style="margin-top:8px">
+        <span class="compose-wc" id="wc_doubt">0 palabras</span>
+        <button class="btn-save" id="save_doubt" onclick="saveDoubt()" disabled>Guardar duda →</button>
+      </div>
+    </div>
+    <div class="docs-section-title">Dudas guardadas</div>
+    <div id="doubts-container"></div>
+  </div>
+</div>
+
+<!-- FAB (solo visible en tab metodología) -->
+<button class="fab" id="fab-btn" onclick="openProposeModal()" title="Proponer nuevo proceso">＋</button>
+<div class="toast" id="toast"></div>
+
+<!-- ── MODAL: HISTORIAL ── -->
+<div class="modal-overlay" id="modal-hist" onclick="closeModalIfOutside(event,'modal-hist')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="hist-title"></div>
+        <div class="modal-subtitle">📅 Historial de sesiones</div>
+      </div>
+      <button class="btn-close" onclick="closeModal('modal-hist')">✕</button>
+    </div>
+    <div class="modal-body" id="hist-body"></div>
+  </div>
+</div>
+
+<!-- ── MODAL: PROPONER PROCESO ── -->
+<div class="modal-overlay" id="modal-propose" onclick="closeModalIfOutside(event,'modal-propose')">
+  <div class="modal-box">
+
+    <div id="step-1" style="display:flex;flex-direction:column">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Proponer nuevo proceso</div>
+          <div class="modal-subtitle">Describe el proceso — el sistema generará las preguntas automáticamente</div>
+        </div>
+        <button class="btn-close" onclick="closeModal('modal-propose')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-block">
+          <div class="field-label">Nombre del proceso</div>
+          <div class="field-hint">Ej: "Entrevista de diagnóstico inicial", "Validación de documentación"</div>
+          <input type="text" class="modal-input" id="prop-name" placeholder="Nombre del proceso…">
+        </div>
+        <div class="field-block">
+          <div class="field-label">Describe el proceso con detalle</div>
+          <div class="field-hint">Qué haces, cuándo lo haces, qué buscas y qué suele pasar. Cuanto más contexto, mejores preguntas.</div>
+          <textarea class="modal-input" id="prop-context" placeholder="Describe cómo funciona este proceso en tu metodología…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal('modal-propose')">Cancelar</button>
+        <button class="btn-primary" onclick="startGenerating()">✨ Generar preguntas</button>
+      </div>
+    </div>
+
+    <div id="step-2" style="display:none;flex-direction:column">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="step2-name"></div>
+          <div class="modal-subtitle">Analizando tu descripción…</div>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="generating-wrap">
+          <div class="spinner"></div>
+          <div class="generating-text">Generando preguntas basadas en tu contexto…</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="step-3" style="display:none;flex-direction:column">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="step3-name"></div>
+          <div class="modal-subtitle">Revisa las preguntas antes de añadirlas</div>
+        </div>
+        <button class="btn-close" onclick="closeModal('modal-propose')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="gen-intro" id="gen-intro"></div>
+        <div id="gen-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="showStep(1)">← Editar descripción</button>
+        <button class="btn-primary" onclick="confirmNewCards()">Añadir cards →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── MODAL: RECORDATORIO DE SESIÓN ── -->
+<div class="modal-overlay" id="modal-reminder" onclick="closeModalIfOutside(event,'modal-reminder')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">👋 Bienvenido de nuevo, Lars</div>
+        <div class="modal-subtitle" id="reminder-subtitle">Esto hiciste en tu última sesión:</div>
+      </div>
+      <button class="btn-close" onclick="closeModal('modal-reminder')">✕</button>
+    </div>
+    <div class="modal-body" id="reminder-body"></div>
+    <div class="modal-footer">
+      <button class="btn-primary" onclick="closeModal('modal-reminder')">¡Empezar! →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SUPABASE SDK ── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════
+const SUPABASE_URL     = 'https://cqcrbingjivhukgcglal.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxY3JiaW5naml2aHVrZ2NnbGFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNDQ4ODcsImV4cCI6MjA5MTkyMDg4N30.V-LtXre1myBxyhV33QbZRIB6k7602NbBbjs4UL76bMo';
+const STORAGE_KEY = 'lks_v2';
+let sb = null;
+
+// ══════════════════════════════════════════════════════════
+//  SECTIONS CONFIG
+// ══════════════════════════════════════════════════════════
+const SECTIONS_CONFIG = [
+  { short:'Perfil',       ids:['q1_1','q1_2','q1_3','q1_4'] },
+  { short:'Proceso',      ids:['q2_1','q2_2','q2_3','q2_4'] },
+  { short:'Áreas',        ids:['q3_1','q3_2','q3_3','q3_4'] },
+  { short:'Conocimiento', ids:['q4_1','q4_2','q4_3','q4_4','q4_5','q4_6'] },
+  { short:'Hallazgos',    ids:['q5_1','q5_2','q5_3','q5_4'] },
+  { short:'Entregable',   ids:['q6_1','q6_2','q6_3','q6_4'] },
+  { short:'Metodología',  ids:['q7_1','q7_2','q7_3','q7_4'] },
+  { short:'Límites',      ids:['q8_1','q8_2','q8_3','q8_4'] },
+];
+
+// ══════════════════════════════════════════════════════════
+//  QUESTIONS
+// ══════════════════════════════════════════════════════════
+const QUESTIONS_DEFAULT = [
+  // ── Perfil de auditor ──
+  { id:'q1_1', sec:'Perfil de auditor', title:'¿Cuántas auditorías haces al año y cómo de diferentes son entre sí?', ctx:'Define el volumen y variabilidad del sistema.' },
+  { id:'q1_2', sec:'Perfil de auditor', title:'¿Cuál es el perfil típico de empresa que auditas? (tamaño, sector, momento empresarial)', ctx:'Define el tipo de cliente para el que está optimizado el sistema.' },
+  { id:'q1_3', sec:'Perfil de auditor', title:'¿Cuánto dura una auditoría completa, de primer contacto a entrega final?', ctx:'Determina las fases temporales del sistema.' },
+  { id:'q1_4', sec:'Perfil de auditor', title:'¿Trabajas solo o con apoyo? ¿Delegas alguna parte del proceso?', ctx:'Define si el sistema soporta un solo usuario o colaboración.' },
+  // ── Tu proceso completo ──
+  { id:'q2_1', sec:'Tu proceso completo', title:'Describe las fases de tu proceso desde que un cliente te contacta hasta que entregas el informe.', ctx:'Es el esqueleto del sistema — cada fase se convierte en un módulo.' },
+  { id:'q2_2', sec:'Tu proceso completo', title:'¿Qué documentación o información pides antes de empezar la auditoría?', ctx:'Define el módulo de intake — qué datos necesita el sistema antes de arrancar.' },
+  { id:'q2_3', sec:'Tu proceso completo', title:'¿Qué es lo primero que haces siempre, sin excepción, en todas las auditorías?', ctx:'El núcleo obligatorio — el módulo que no se puede desactivar.' },
+  { id:'q2_4', sec:'Tu proceso completo', title:'¿Qué es lo último que haces antes de entregar el informe al cliente?', ctx:'Define el paso de validación final.' },
+  // ── Áreas de proceso ──
+  { id:'q3_1', sec:'Áreas de proceso', title:'¿En qué orden trabajas las áreas de una empresa durante una auditoría? ¿Por qué ese orden?', ctx:'Define la secuencia lógica del sistema.' },
+  { id:'q3_2', sec:'Áreas de proceso', title:'¿Qué áreas son siempre obligatorias independientemente del sector o tamaño?', ctx:'Los módulos core — activos en cualquier auditoría.' },
+  { id:'q3_3', sec:'Áreas de proceso', title:'¿Qué áreas activas o excluyes según el tipo de empresa? ¿Qué criterio usas?', ctx:'Las reglas condicionales del sistema.' },
+  { id:'q3_4', sec:'Áreas de proceso', title:'¿Cuándo un área parece no aplicar, cómo lo confirmas antes de descartarla?', ctx:'Evita falsos negativos en el análisis.' },
+  // ── Conocimiento por área ──
+  { id:'q4_1', sec:'Conocimiento por área', title:'Para Operaciones: ¿qué evalúas exactamente, cómo lo mides y qué encuentras habitualmente?', ctx:'El conocimiento específico que el sistema aplica al auditar esta área.' },
+  { id:'q4_2', sec:'Conocimiento por área', title:'Para Ventas y Comercial: ¿qué evalúas, cómo lo mides y qué encuentras habitualmente?', ctx:'El conocimiento específico que el sistema aplica al auditar esta área.' },
+  { id:'q4_3', sec:'Conocimiento por área', title:'Para RRHH y Organización: ¿qué evalúas, cómo lo mides y qué encuentras habitualmente?', ctx:'El conocimiento específico que el sistema aplica al auditar esta área.' },
+  { id:'q4_4', sec:'Conocimiento por área', title:'Para Finanzas: ¿qué evalúas, cómo lo mides y qué encuentras habitualmente?', ctx:'El conocimiento específico que el sistema aplica al auditar esta área.' },
+  { id:'q4_5', sec:'Conocimiento por área', title:'Para Tecnología y Sistemas: ¿qué evalúas, cómo lo mides y qué encuentras habitualmente?', ctx:'El conocimiento específico que el sistema aplica al auditar esta área.' },
+  { id:'q4_6', sec:'Conocimiento por área', title:'Para Dirección y Estrategia: ¿qué evalúas, cómo lo mides y qué encuentras habitualmente?', ctx:'El conocimiento específico que el sistema aplica al auditar esta área.' },
+  // ── Hallazgos universales ──
+  { id:'q5_1', sec:'Hallazgos universales', title:'¿Cuáles son los 3 problemas que encuentras en casi todas las empresas?', ctx:'Los módulos core con benchmarks propios — los más fáciles de sistematizar.' },
+  { id:'q5_2', sec:'Hallazgos universales', title:'¿Hay errores que aparecen específicamente en empresas de cierto tamaño o sector?', ctx:'Define las reglas condicionales de análisis.' },
+  { id:'q5_3', sec:'Hallazgos universales', title:'¿Cuál es el hallazgo que más sorprende a los clientes? ¿Por qué no lo ven?', ctx:'El insight diferencial del sistema.' },
+  { id:'q5_4', sec:'Hallazgos universales', title:'¿Cuál es el problema más difícil de comunicar a un cliente? ¿Por qué genera resistencia?', ctx:'Cómo el sistema debe enmarcar ciertos hallazgos.' },
+  // ── El entregable ──
+  { id:'q6_1', sec:'El entregable', title:'¿Cómo está estructurado el informe que entregas? ¿Qué secciones siempre tiene?', ctx:'El template de output del sistema.' },
+  { id:'q6_2', sec:'El entregable', title:'¿Incluyes un roadmap de mejoras? ¿Con qué estructura y horizonte temporal?', ctx:'Define si el sistema genera solo diagnóstico o también el plan de acción.' },
+  { id:'q6_3', sec:'El entregable', title:'¿Cómo presentas los hallazgos al cliente? ¿Hay una reunión de presentación?', ctx:'Define si el sistema prepara materiales de presentación.' },
+  { id:'q6_4', sec:'El entregable', title:'¿Qué preguntas hace siempre el cliente al recibir el informe?', ctx:'FAQs que el sistema puede anticipar en el propio informe.' },
+  // ── Cómo funciona la auditoría ──
+  { id:'q7_1', sec:'Cómo funciona la auditoría', title:'¿Cómo abordan los auditores de procesos su trabajo? ¿Qué tienen en común los buenos?', ctx:'La base metodológica del sistema.' },
+  { id:'q7_2', sec:'Cómo funciona la auditoría', title:'¿Qué marcos o enfoques son estándar en la auditoría de procesos (sin contar ISO)?', ctx:'Referentes del campo que el sistema puede usar como contraste.' },
+  { id:'q7_3', sec:'Cómo funciona la auditoría', title:'¿Qué errores cometen frecuentemente los auditores — no las empresas, sino los propios auditores?', ctx:'Los sesgos y puntos ciegos a evitar.' },
+  { id:'q7_4', sec:'Cómo funciona la auditoría', title:'¿Qué distingue una auditoría de procesos superficial de una realmente profunda?', ctx:'Define el estándar de calidad del sistema.' },
+  // ── Límites del sistema ──
+  { id:'q8_1', sec:'Límites del sistema', title:'¿Qué partes de tu trabajo crees que NO se pueden sistematizar?', ctx:'Define los límites del sistema — dónde necesita intervención humana.' },
+  { id:'q8_2', sec:'Límites del sistema', title:'¿Dónde necesitas tu intuición y experiencia vs. dónde el proceso es mecánico?', ctx:'Separa el motor automático de los puntos donde Lars interviene.' },
+  { id:'q8_3', sec:'Límites del sistema', title:'¿Qué es lo más tedioso o repetitivo de tu proceso actual?', ctx:'El primer dolor que el sistema resuelve.' },
+  { id:'q8_4', sec:'Límites del sistema', title:'¿Si quisieras hacer el doble de auditorías al año, qué te lo impediría?', ctx:'Define si el sistema es una herramienta de productividad o de escala.' },
+];
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+const STATE = {
+  currentSession: 1,
+  sessions: [],
+  questionOrder: QUESTIONS_DEFAULT.map(q => q.id),
+  customQuestions: [],
+  entries: {},   // { questionId: [{date, isoDate, session, text, words}] }
+  done: {},      // { questionId: true/false }
+  drafts: {},
+  ragDocs: [],   // loaded from Supabase rag_documents table
+  doubts:  [],   // loaded from Supabase doubts table
+  cloudOk: false,
+};
+
+// ══════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════
+function todayStr()   { return new Date().toISOString().slice(0,10); }
+function todayLabel() { return new Date().toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
+function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function countWords(t){ return String(t).trim().split(/\s+/).filter(Boolean).length; }
+function fmtSize(b)   { return b > 1048576 ? (b/1048576).toFixed(1)+' MB' : b > 1024 ? (b/1024).toFixed(0)+' KB' : b+' B'; }
+function delay(ms)    { return new Promise(r => setTimeout(r, ms)); }
+
+// ══════════════════════════════════════════════════════════
+//  LOCAL STORAGE
+// ══════════════════════════════════════════════════════════
+function loadLocal() {
+  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
+}
+function saveLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: '2.0', lastSave: new Date().toISOString(),
+      currentSession: STATE.currentSession, sessions: STATE.sessions,
+      questionOrder: STATE.questionOrder, customQuestions: STATE.customQuestions,
+      entries: STATE.entries, done: STATE.done,
+    }));
+  } catch(e) { console.warn('localStorage save error', e); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  SUPABASE — LOAD
+// ══════════════════════════════════════════════════════════
+async function loadFromCloud() {
+  try {
+    const [entriesRes, stateRes, customRes, orderRes, sessionsRes] = await Promise.all([
+      sb.from('entries').select('*').order('created_at'),
+      sb.from('question_state').select('*'),
+      sb.from('custom_questions').select('*').order('created_at'),
+      sb.from('question_order').select('*').limit(1),
+      sb.from('sessions').select('*').order('n'),
+    ]);
+
+    // Check for errors
+    if (entriesRes.error || stateRes.error || customRes.error || orderRes.error || sessionsRes.error) {
+      throw new Error('Supabase query error');
+    }
+
+    // Build entries map
+    const entriesMap = {};
+    (entriesRes.data || []).forEach(e => {
+      if (!entriesMap[e.question_id]) entriesMap[e.question_id] = [];
+      entriesMap[e.question_id].push({
+        date: e.date_label, isoDate: e.iso_date,
+        session: e.session_n, text: e.text, words: e.words,
+        section: e.section||'', question_title: e.question_title||'',
+        _id: e.id,
+      });
+    });
+
+    // Build done map
+    const doneMap = {};
+    (stateRes.data || []).forEach(s => { doneMap[s.question_id] = s.is_done; });
+
+    // Custom questions
+    const customQs = (customRes.data || []).map(q => ({
+      id: q.id, sec: q.sec, title: q.title, ctx: q.ctx || '', isNew: q.is_new,
+    }));
+
+    // Question order
+    const orderRow   = (orderRes.data || [])[0];
+    const questionOrder = orderRow?.order_array || QUESTIONS_DEFAULT.map(q => q.id);
+
+    // Sessions + new session detection
+    const today    = todayStr();
+    const sessions = (sessionsRes.data || []).map(s => ({ n: s.n, date: s.date }));
+    let currentSession = 1;
+
+    if (sessions.length === 0) {
+      // First ever use
+      await sb.from('sessions').insert({ n: 1, date: today });
+      sessions.push({ n: 1, date: today });
+      currentSession = 1;
+    } else {
+      const last = sessions[sessions.length - 1];
+      if (last.date !== today) {
+        currentSession = last.n + 1;
+        await sb.from('sessions').insert({ n: currentSession, date: today });
+        sessions.push({ n: currentSession, date: today });
+      } else {
+        currentSession = last.n;
+      }
+    }
+
+    return { entriesMap, doneMap, customQs, questionOrder, sessions, currentSession };
+  } catch(err) {
+    console.error('Cloud load error:', err);
+    return null;
+  }
+}
+
+function applyCloudData(data) {
+  STATE.entries         = data.entriesMap;
+  STATE.done            = data.doneMap;
+  STATE.customQuestions = data.customQs;
+  STATE.questionOrder   = Array.isArray(data.questionOrder) ? data.questionOrder : QUESTIONS_DEFAULT.map(q=>q.id);
+  STATE.sessions        = data.sessions;
+  STATE.currentSession  = data.currentSession;
+  STATE.cloudOk         = true;
+}
+
+function applyLocalData() {
+  const saved = loadLocal();
+  const today = todayStr();
+  if (!saved) {
+    STATE.currentSession = 1;
+    STATE.sessions       = [{ n:1, date:today }];
+    return;
+  }
+  let session = saved.currentSession || 1;
+  const sessions = saved.sessions || [{ n:1, date:today }];
+  const lastDate = sessions[sessions.length-1]?.date;
+  if (lastDate && lastDate !== today) {
+    session++;
+    sessions.push({ n:session, date:today });
+  }
+  STATE.currentSession  = session;
+  STATE.sessions        = sessions;
+  STATE.questionOrder   = saved.questionOrder || QUESTIONS_DEFAULT.map(q=>q.id);
+  STATE.customQuestions = saved.customQuestions || [];
+  STATE.entries         = saved.entries || {};
+  STATE.done            = saved.done || {};
+  STATE.cloudOk         = false;
+}
+
+// ══════════════════════════════════════════════════════════
+//  SUPABASE — SAVE (fire & forget — UX never waits)
+// ══════════════════════════════════════════════════════════
+async function cloudSaveEntry(questionId, entry) {
+  if (!sb || !STATE.cloudOk) return;
+  setSyncStatus('syncing');
+  const { data, error } = await sb.from('entries').insert({
+    question_id:    questionId,
+    date_label:     entry.date,
+    iso_date:       entry.isoDate,
+    session_n:      entry.session,
+    text:           entry.text,
+    words:          entry.words,
+    section:        entry.section        || '',
+    question_title: entry.question_title || '',
+  }).select().single();
+  if (!error && data) {
+    // Actualizar el _id local con el UUID de Supabase
+    const e = (STATE.entries[questionId]||[]).find(x => x._id === entry._id);
+    if (e) { e._id = data.id; saveLocal(); }
+  }
+  setSyncStatus(error ? 'offline' : 'ok');
+}
+
+async function cloudSetDone(questionId, isDone) {
+  if (!sb || !STATE.cloudOk) return;
+  setSyncStatus('syncing');
+  const { error } = await sb.from('question_state').upsert({
+    question_id: questionId, is_done: isDone, updated_at: new Date().toISOString(),
+  }, { onConflict: 'question_id' });
+  setSyncStatus(error ? 'offline' : 'ok');
+}
+
+async function cloudSaveCustomQuestion(q) {
+  if (!sb || !STATE.cloudOk) return;
+  setSyncStatus('syncing');
+  const { error } = await sb.from('custom_questions').upsert({
+    id: q.id, sec: q.sec, title: q.title, ctx: q.ctx, is_new: q.isNew,
+  }, { onConflict: 'id' });
+  setSyncStatus(error ? 'offline' : 'ok');
+}
+
+async function cloudSaveOrder(orderArray) {
+  if (!sb || !STATE.cloudOk) return;
+  const { error } = await sb.from('question_order').upsert({
+    id: 1, order_array: orderArray, updated_at: new Date().toISOString(),
+  }, { onConflict: 'id' });
+  if (error) console.warn('order save error', error);
+}
+
+// ══════════════════════════════════════════════════════════
+//  SYNC STATUS BADGE
+// ══════════════════════════════════════════════════════════
+let syncTimer = null;
+function setSyncStatus(status) {
+  const badge = document.getElementById('sync-badge');
+  if (!badge) return;
+  badge.className = 'sync-badge ' + status;
+  const labels = { connecting:'↻ Conectando', ok:'☁ Sincronizado', syncing:'↻ Guardando…', offline:'⚠ Sin conexión' };
+  badge.textContent = labels[status] || status;
+  // Auto-reset 'syncing' → 'ok' after 2s if no new sync
+  if (status === 'syncing') {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      if (document.getElementById('sync-badge').classList.contains('syncing')) setSyncStatus('ok');
+    }, 2000);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════════════════
+function showTab(name) {
+  ['metodologia','rag','dudas'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById('tab-btn-' + t).classList.toggle('active', t === name);
+  });
+  document.getElementById('fab-btn').style.display = name === 'metodologia' ? 'flex' : 'none';
+  if (name === 'rag')   renderRag();
+  if (name === 'dudas') renderDudas();
+}
+
+// ══════════════════════════════════════════════════════════
+//  ORDERED QUESTIONS
+// ══════════════════════════════════════════════════════════
+function getOrderedQuestions() {
+  const all = [...QUESTIONS_DEFAULT, ...STATE.customQuestions];
+  const map = Object.fromEntries(all.map(q => [q.id, q]));
+  const ordered = STATE.questionOrder.map(id => map[id]).filter(Boolean);
+  all.forEach(q => { if (!STATE.questionOrder.includes(q.id)) ordered.push(q); });
+  return ordered;
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER — METODOLOGÍA
+// ══════════════════════════════════════════════════════════
+function render() {
+  const questions = getOrderedQuestions();
+  document.getElementById('cards-grid').innerHTML = questions.map((q,i) => cardHTML(q,i+1)).join('');
+  setupDrag();
+  updateProgress();
+  renderSections();
+  document.getElementById('session-badge').textContent = 'Sesión ' + STATE.currentSession;
+}
+
+function getStatus(id) {
+  if (STATE.done[id]) return 'done';
+  const q = [...QUESTIONS_DEFAULT,...STATE.customQuestions].find(x=>x.id===id);
+  if (q?.isNew && !(STATE.entries[id]||[]).length) return 'new';
+  if ((STATE.entries[id]||[]).length) return 'partial';
+  return 'empty';
+}
+
+function cardHTML(q, idx) {
+  const status  = getStatus(q.id);
+  const entries = STATE.entries[q.id] || [];
+  const isDone  = status === 'done';
+  const isNew   = !!q.isNew;
+  const draft   = STATE.drafts[q.id] || '';
+  const sc = {done:'stripe-done',partial:'stripe-partial',empty:'stripe-empty',new:'stripe-new'}[status];
+  const nc = {done:'q-num-done', partial:'q-num-partial',empty:'q-num-empty', new:'q-num-new' }[status];
+  const ni = isDone ? '✓' : idx;
+  const secClass = isNew ? 'q-sec sec-new' : 'q-sec';
+  const secLabel = isNew ? '✦ '+q.sec : q.sec;
+
+  return `<div class="q-card" id="card_${q.id}" draggable="true">
+    <div class="q-stripe ${sc}"></div>
+    <div class="q-card-head">
+      <div class="drag-handle" title="Arrastra para reordenar">⠿</div>
+      <div class="head-content">
+        <div class="q-meta-row">
+          <div class="q-num ${nc}">${ni}</div>
+          <span class="${secClass}">${secLabel}</span>
+        </div>
+        <div class="q-title">${q.title}</div>
+        ${q.ctx ? `<div class="q-context">${q.ctx}</div>` : ''}
+      </div>
+    </div>
+    <div class="q-compose">
+      <div class="compose-top-row">
+        <span class="compose-label">✏️ Respuesta de hoy</span>
+        <button class="btn-mic" id="mic_${q.id}" onclick="toggleMic('${q.id}')">🎙 Dictar</button>
+      </div>
+      <div class="mic-bar" id="micbar_${q.id}"><div class="mic-dot"></div><span>Escuchando…</span></div>
+      <textarea class="compose-ta" id="ta_${q.id}"
+        placeholder="Escribe o dicta tu respuesta…"
+        oninput="onInput('${q.id}')">${esc(draft)}</textarea>
+      <div class="compose-footer-row">
+        <div class="wc-wrap">
+          <span class="compose-wc" id="wc_${q.id}">${countWords(draft)} palabras</span>
+          <span class="wc-warning" id="wcw_${q.id}">respuesta muy corta</span>
+        </div>
+        <button class="btn-save" id="save_${q.id}" onclick="saveEntry('${q.id}')"
+          ${draft.trim()?'':'disabled'}>Guardar entrada →</button>
+      </div>
+    </div>
+    <div class="q-card-footer">
+      <button class="btn-mark-done ${isDone?'marked':'unmarked'}" onclick="toggleDone('${q.id}')">
+        ${isDone?'✓ Completada':'Marcar completada'}
+      </button>
+      ${entries.length
+        ? `<button class="btn-hist" onclick="openHistModal('${q.id}')">📅 Historial <span class="h-badge">${entries.length}</span></button>`
+        : `<span class="no-entries">Sin entradas aún</span>`}
+    </div>
+  </div>`;
+}
+
+function updateProgress() {
+  const all  = getOrderedQuestions();
+  const done = all.filter(q => STATE.done[q.id]).length;
+  const pct  = all.length ? Math.round(done/all.length*100) : 0;
+  document.getElementById('pct-text').textContent = pct+'%';
+  document.getElementById('pct-bar').style.width  = pct+'%';
+}
+
+function renderSections() {
+  const grid = document.getElementById('sections-grid');
+  if (!grid) return;
+  grid.innerHTML = SECTIONS_CONFIG.map(sec => {
+    const answered = sec.ids.filter(id => (STATE.entries[id]||[]).length > 0).length;
+    const total    = sec.ids.length;
+    const isDone   = answered === total;
+    const status   = isDone ? 'done' : answered > 0 ? 'partial' : 'empty';
+    return `<div class="sec-item ${status}">
+      <div class="sec-dot ${status}"></div>
+      <div class="sec-info">
+        <div class="sec-name">${sec.short}</div>
+        <div class="sec-count">${isDone ? 'Completa ✓' : answered+' de '+total}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+//  DUDAS
+// ══════════════════════════════════════════════════════════
+function onDoubtInput() {
+  const val = document.getElementById('ta_doubt').value;
+  document.getElementById('wc_doubt').textContent = countWords(val)+' palabras';
+  document.getElementById('save_doubt').disabled = !val.trim();
+}
+
+async function saveDoubt() {
+  const ta   = document.getElementById('ta_doubt');
+  const text = ta.value.trim();
+  if (!text) return;
+  const entry = {
+    id: 'local_'+Date.now(), text, session_n: STATE.currentSession,
+    date_label: todayLabel(), iso_date: todayStr(), words: countWords(text),
+    created_at: new Date().toISOString(),
+  };
+  STATE.doubts.unshift(entry);
+  ta.value = '';
+  document.getElementById('wc_doubt').textContent = '0 palabras';
+  document.getElementById('save_doubt').disabled = true;
+  renderDudas();
+  showToast('✓ Duda guardada');
+  if (sb && STATE.cloudOk) {
+    setSyncStatus('syncing');
+    const { data, error } = await sb.from('doubts').insert({
+      text, session_n: entry.session_n, date_label: entry.date_label,
+      iso_date: entry.iso_date, words: entry.words,
+    }).select().single();
+    if (!error && data) {
+      const idx = STATE.doubts.findIndex(d => d.id === entry.id);
+      if (idx >= 0) STATE.doubts[idx].id = data.id;
+    }
+    setSyncStatus(error ? 'offline' : 'ok');
+  }
+}
+
+async function deleteDoubt(id) {
+  STATE.doubts = STATE.doubts.filter(d => d.id !== id);
+  renderDudas();
+  showToast('🗑 Duda eliminada');
+  if (sb && STATE.cloudOk && !String(id).startsWith('local_')) {
+    await sb.from('doubts').delete().eq('id', id);
+  }
+}
+
+async function loadDoubtsFromCloud() {
+  if (!sb || !STATE.cloudOk) return;
+  const { data, error } = await sb.from('doubts').select('*').order('created_at', { ascending:false });
+  if (!error) STATE.doubts = data || [];
+}
+
+function renderDudas() {
+  const container = document.getElementById('doubts-container');
+  if (!container) return;
+  if (!STATE.doubts.length) {
+    container.innerHTML = `<div class="rag-empty"><div class="rag-empty-icon">💬</div><div class="rag-empty-title">Sin dudas aún</div><div>Escribe tu primera duda arriba.</div></div>`;
+    return;
+  }
+  container.innerHTML = STATE.doubts.map(d => `
+    <div class="doubt-card">
+      <div class="doubt-meta">
+        <span class="h-date">📅 ${d.date_label}</span>
+        <span class="h-session">Sesión ${d.session_n||1}</span>
+        <span class="h-words">${d.words||countWords(d.text)} palabras</span>
+      </div>
+      <div class="doubt-text">${esc(d.text)}</div>
+      <div class="doubt-actions">
+        <button class="btn-doc-action btn-doc-delete" onclick="deleteDoubt('${d.id}')">🗑 Eliminar</button>
+      </div>
+    </div>`).join('');
+}
+
+// Mic for doubts
+let doubtMic = { isRecording:false };
+function toggleMicDoubt() { doubtMic.isRecording ? stopMicDoubt() : startMicDoubt(); }
+function startMicDoubt() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ta = document.getElementById('ta_doubt');
+  if (!SR) { showToast('Micrófono no disponible. Usa Chrome o Edge.'); return; }
+  const rec = new SR();
+  rec.lang='es-ES'; rec.continuous=true; rec.interimResults=true;
+  const base = ta.value; let final='';
+  rec.onresult = e => {
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) final+=e.results[i][0].transcript+' ';
+      else interim+=e.results[i][0].transcript;
+    }
+    ta.value=(base.trim()?base.trimEnd()+' ':'')+final+interim;
+    onDoubtInput();
+  };
+  rec.onerror = () => stopMicDoubt();
+  rec.onend   = () => { if(doubtMic.isRecording){try{rec.start();}catch(e){}} };
+  rec.start();
+  doubtMic = { isRecording:true, recognition:rec };
+  const btn=document.getElementById('mic_doubt'); const bar=document.getElementById('micbar_doubt');
+  btn.classList.add('recording'); btn.innerHTML='⏹ Parar'; bar?.classList.add('active');
+}
+function stopMicDoubt() {
+  if(doubtMic.recognition){try{doubtMic.recognition.stop();}catch(e){}}
+  doubtMic={isRecording:false};
+  const btn=document.getElementById('mic_doubt'); const bar=document.getElementById('micbar_doubt');
+  btn?.classList.remove('recording'); if(btn) btn.innerHTML='🎙 Dictar'; bar?.classList.remove('active');
+}
+
+// ══════════════════════════════════════════════════════════
+//  SESSION REMINDER
+// ══════════════════════════════════════════════════════════
+function showSessionReminder() {
+  const prev = STATE.currentSession - 1;
+  if (prev < 1) return;
+  const questions = getOrderedQuestions();
+  const answered  = [];
+  questions.forEach(q => {
+    const es = (STATE.entries[q.id]||[]).filter(e => e.session === prev);
+    if (es.length) answered.push({ title: q.title, text: es[es.length-1].text });
+  });
+  if (!answered.length) return;
+  const prevSess = STATE.sessions.find(s => s.n === prev);
+  const dateStr  = prevSess ? new Date(prevSess.date+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long'}) : '';
+  document.getElementById('reminder-subtitle').textContent =
+    `Sesión ${prev}${dateStr?' — '+dateStr:''} · Respondiste ${answered.length} pregunta${answered.length>1?'s':''}:`;
+  document.getElementById('reminder-body').innerHTML = answered.map(a => `
+    <div class="reminder-entry">
+      <div class="reminder-q">${esc(a.title)}</div>
+      <div class="reminder-excerpt">${esc(a.text.slice(0,130))}${a.text.length>130?'…':''}</div>
+    </div>`).join('');
+  openModal('modal-reminder');
+}
+
+// ══════════════════════════════════════════════════════════
+//  DRAG & DROP
+// ══════════════════════════════════════════════════════════
+let dragSrcId = null;
+
+function setupDrag() {
+  document.querySelectorAll('.q-card').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragSrcId = card.id.replace('card_','');
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.q-card').forEach(c => c.classList.remove('drag-over'));
+      if (card.id !== 'card_'+dragSrcId) card.classList.add('drag-over');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      const tgtId = card.id.replace('card_','');
+      if (!dragSrcId || dragSrcId === tgtId) return;
+      saveDrafts();
+      const ordered = getOrderedQuestions();
+      const si = ordered.findIndex(q=>q.id===dragSrcId);
+      const ti = ordered.findIndex(q=>q.id===tgtId);
+      const [moved] = ordered.splice(si,1);
+      ordered.splice(ti,0,moved);
+      STATE.questionOrder = ordered.map(q=>q.id);
+      saveLocal();
+      cloudSaveOrder(STATE.questionOrder);
+      render();
+    });
+  });
+}
+
+function saveDrafts() {
+  document.querySelectorAll('.compose-ta').forEach(ta => {
+    STATE.drafts[ta.id.replace('ta_','')] = ta.value;
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  COMPOSE
+// ══════════════════════════════════════════════════════════
+function onInput(id) {
+  const val = document.getElementById(`ta_${id}`).value;
+  STATE.drafts[id] = val;
+  const w = countWords(val);
+  document.getElementById(`wc_${id}`).textContent = w+' palabras';
+  document.getElementById(`save_${id}`).disabled = !val.trim();
+  const warn = document.getElementById(`wcw_${id}`);
+  if (warn) warn.classList.toggle('show', val.trim().length > 0 && w < 15);
+}
+
+function saveEntry(id) {
+  const ta   = document.getElementById(`ta_${id}`);
+  const text = ta.value.trim();
+  if (!text) return;
+
+  const w = countWords(text);
+  const q = getOrderedQuestions().find(x => x.id === id);
+  const entry = { date:todayLabel(), isoDate:todayStr(), session:STATE.currentSession, text, words:w,
+                  section: q?.sec||'', question_title: q?.title||'', _id:'local_'+Date.now() };
+
+  STATE.entries[id] = STATE.entries[id] || [];
+  STATE.entries[id].push(entry);
+  STATE.drafts[id] = '';
+
+  ta.classList.add('saved');
+  setTimeout(() => ta.classList.remove('saved'), 800);
+
+  saveLocal();
+  cloudSaveEntry(id, entry);
+  render();
+
+  if (w < 15) showToast('💡 Respuesta guardada — considera ampliarla un poco más');
+  else        showToast('✓ Entrada guardada');
+}
+
+function toggleDone(id) {
+  STATE.done[id] = !STATE.done[id];
+  saveLocal();
+  cloudSetDone(id, STATE.done[id]);
+  render();
+}
+
+// ══════════════════════════════════════════════════════════
+//  HISTORIAL MODAL
+// ══════════════════════════════════════════════════════════
+function openHistModal(id) {
+  const q = getOrderedQuestions().find(x=>x.id===id);
+  const entries = (STATE.entries[id]||[]).slice().reverse();
+  document.getElementById('hist-title').textContent = q.title;
+  const allEntries = STATE.entries[id] || [];
+  const reversed   = [...allEntries].reverse(); // más reciente primero
+  document.getElementById('hist-body').innerHTML = reversed.length
+    ? reversed.map((e, revIdx) => {
+        const origIdx = allEntries.length - 1 - revIdx; // índice real en el array
+        return `<div class="h-entry">
+          <div class="h-entry-head">
+            <div class="h-entry-meta">
+              <span class="h-date">📅 ${e.date}</span>
+              <span class="h-session">Sesión ${e.session||1}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="h-words">${e.words||countWords(e.text)} palabras</span>
+              <button onclick="deleteEntry('${id}',${origIdx})"
+                style="background:none;border:none;cursor:pointer;font-size:.72rem;color:var(--text3);padding:2px 4px;border-radius:4px"
+                title="Borrar esta entrada">🗑</button>
+            </div>
+          </div>
+          <div class="h-text">${esc(e.text)}</div>
+        </div>`;
+      }).join('')
+    : '<p style="color:var(--text3);font-size:.8rem;padding:12px 0">Sin entradas aún.</p>';
+  openModal('modal-hist');
+}
+
+function deleteEntry(questionId, origIdx) {
+  const arr = STATE.entries[questionId] || [];
+  arr.splice(origIdx, 1);
+  if (!arr.length) delete STATE.entries[questionId];
+  else STATE.entries[questionId] = arr;
+  saveLocal();
+  if ((STATE.entries[questionId]||[]).length > 0) {
+    openHistModal(questionId);
+  } else {
+    closeModal('modal-hist');
+    render();
+  }
+  showToast('🗑 Entrada eliminada');
+  // Sync fiable: borrar todos los entries de esa pregunta y reinsertar los que quedan
+  if (sb && STATE.cloudOk) syncQuestionEntries(questionId);
+}
+
+async function syncQuestionEntries(questionId) {
+  setSyncStatus('syncing');
+  // 1. Borrar todos en Supabase para esta pregunta
+  const { error: delErr } = await sb.from('entries').delete().eq('question_id', questionId);
+  if (delErr) { setSyncStatus('offline'); return; }
+  // 2. Reinsertar los que quedan en STATE
+  const remaining = STATE.entries[questionId] || [];
+  if (remaining.length > 0) {
+    const { data, error: insErr } = await sb.from('entries').insert(
+      remaining.map(e => ({
+        question_id: questionId, date_label: e.date, iso_date: e.isoDate,
+        session_n: e.session, text: e.text, words: e.words,
+        section: e.section||'', question_title: e.question_title||'',
+      }))
+    ).select();
+    if (!insErr && data) {
+      data.forEach((row, i) => { if (remaining[i]) remaining[i]._id = row.id; });
+      saveLocal();
+    }
+  }
+  setSyncStatus('ok');
+}
+
+// ══════════════════════════════════════════════════════════
+//  PROPONER PROCESO
+// ══════════════════════════════════════════════════════════
+let pendingQuestions = null;
+let pendingName      = null;
+
+function openProposeModal() {
+  document.getElementById('prop-name').value    = '';
+  document.getElementById('prop-context').value = '';
+  showStep(1);
+  openModal('modal-propose');
+}
+
+function showStep(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById(`step-${i}`);
+    el.style.display = i===n ? 'flex' : 'none';
+    if (i===n) el.style.flexDirection='column';
+  });
+}
+
+function startGenerating() {
+  const name    = document.getElementById('prop-name').value.trim();
+  const context = document.getElementById('prop-context').value.trim();
+  if (!name || !context) { showToast('Completa el nombre y la descripción'); return; }
+  pendingName = name;
+  document.getElementById('step2-name').textContent = name;
+  showStep(2);
+  setTimeout(() => {
+    pendingQuestions = generateQuestions(name, context);
+    document.getElementById('step3-name').textContent = name;
+    document.getElementById('gen-intro').innerHTML =
+      `El sistema propone <strong>${pendingQuestions.length} preguntas</strong> para profundizar en <em>${name}</em>. Revísalas y añádelas cuando estés listo.`;
+    document.getElementById('gen-list').innerHTML =
+      pendingQuestions.map((q,i)=>`
+        <div class="gen-q-item">
+          <div class="gen-q-num">${i+1}</div>
+          <div class="gen-q-text">${q}</div>
+        </div>`).join('');
+    showStep(3);
+  }, 1800);
+}
+
+function generateQuestions(name, context) {
+  const ctx = context.toLowerCase();
+  const qs = [
+    `¿Cuál es el objetivo concreto de "${name}" y en qué momento exacto del proceso lo ejecutas?`,
+    `¿Qué información, documentos o condiciones necesitas tener antes de poder ejecutar "${name}"?`,
+    `Describe paso a paso cómo ejecutas "${name}" — desde que empiezas hasta que terminas.`,
+    `¿Cómo sabes que "${name}" ha ido bien? ¿Cuál es el resultado o entregable esperado?`,
+    `¿Qué puede fallar en "${name}" y cómo lo detectas o corriges cuando ocurre?`,
+  ];
+  if (ctx.includes('cliente') || ctx.includes('empresa') || ctx.includes('reunión') || ctx.includes('reunion')) {
+    qs.push(`¿Qué aprenden sobre el cliente o la empresa durante "${name}" que no podrías saber de otra manera?`);
+  }
+  return qs;
+}
+
+function confirmNewCards() {
+  if (!pendingQuestions || !pendingName) return;
+  const newQs = pendingQuestions.map((title,i) => ({
+    id:    `custom_${Date.now()}_${i}`,
+    sec:   pendingName,
+    title,
+    ctx:   '',
+    isNew: true,
+  }));
+  STATE.customQuestions.push(...newQs);
+  STATE.questionOrder.push(...newQs.map(q=>q.id));
+  saveLocal();
+  newQs.forEach(q => cloudSaveCustomQuestion(q));
+  cloudSaveOrder(STATE.questionOrder);
+  closeModal('modal-propose');
+  render();
+  setTimeout(() => {
+    const last = document.getElementById('card_'+newQs[newQs.length-1].id);
+    if (last) last.scrollIntoView({behavior:'smooth',block:'center'});
+  }, 100);
+  showToast(`✓ ${newQs.length} cards añadidas — "${pendingName}"`);
+}
+
+// ══════════════════════════════════════════════════════════
+//  EXPORT JSON
+// ══════════════════════════════════════════════════════════
+function exportJSON() {
+  const questions = getOrderedQuestions();
+  const payload = {
+    _meta: {
+      system:'Lars Knowledge System', version:'2.0',
+      exportDate: new Date().toISOString(),
+      session: STATE.currentSession, totalSessions: STATE.sessions.length,
+      sessions: STATE.sessions,
+    },
+    methodology: questions.map(q => {
+      const entries = STATE.entries[q.id] || [];
+      return { id:q.id, section:q.sec, question:q.title, isCustom:!!q.isNew,
+               done:!!STATE.done[q.id], answer:entries.map(e=>e.text).join('\n\n'), entries };
+    }),
+    summary: {
+      totalQuestions:    questions.length,
+      answeredQuestions: questions.filter(q=>(STATE.entries[q.id]||[]).length>0).length,
+      completedQuestions:questions.filter(q=>STATE.done[q.id]).length,
+      customProcesses:   STATE.customQuestions.length,
+    },
+  };
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `lars_session_${STATE.currentSession}_${todayStr()}.json`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('✓ JSON exportado');
+}
+
+// ══════════════════════════════════════════════════════════
+//  RAG SPACE
+// ══════════════════════════════════════════════════════════
+let selectedFile = null;
+
+function onFileSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  setDropZoneFile(file);
+}
+
+function setDropZoneFile(file) {
+  selectedFile = file;
+  const zone = document.getElementById('rag-drop-zone');
+  zone.classList.add('has-file');
+  zone.innerHTML = `
+    <div class="drop-icon">✅</div>
+    <div class="file-name-pill">
+      📎 ${esc(file.name)}
+      <button class="btn-clear-file" onclick="clearFile(event)">✕</button>
+    </div>
+    <div class="drop-sub">${fmtSize(file.size)}</div>`;
+  // Auto-fill name if empty
+  const nameEl = document.getElementById('rag-name');
+  if (!nameEl.value.trim()) {
+    nameEl.value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g,' ');
+  }
+  document.getElementById('btn-upload').disabled = false;
+}
+
+function clearFile(e) {
+  e.stopPropagation();
+  selectedFile = null;
+  document.getElementById('rag-file-input').value = '';
+  const zone = document.getElementById('rag-drop-zone');
+  zone.classList.remove('has-file');
+  zone.innerHTML = `
+    <div class="drop-icon">📄</div>
+    <div class="drop-text" id="drop-text">Haz clic o arrastra un archivo aquí</div>
+    <div class="drop-sub" id="drop-sub">PDF, DOCX, XLSX, TXT — hasta 50 MB</div>`;
+  document.getElementById('btn-upload').disabled = true;
+}
+
+function onDropZoneDragOver(e) { e.preventDefault(); document.getElementById('rag-drop-zone').classList.add('drag-over-zone'); }
+function onDropZoneDragLeave(e){ document.getElementById('rag-drop-zone').classList.remove('drag-over-zone'); }
+function onDropZoneDrop(e) {
+  e.preventDefault();
+  document.getElementById('rag-drop-zone').classList.remove('drag-over-zone');
+  const file = e.dataTransfer.files[0];
+  if (file) setDropZoneFile(file);
+}
+
+async function uploadDocument() {
+  if (!selectedFile) return;
+  const name = document.getElementById('rag-name').value.trim() || selectedFile.name;
+  const desc = document.getElementById('rag-desc').value.trim();
+  const type = document.getElementById('rag-type').value;
+
+  if (!STATE.cloudOk) {
+    showToast('⚠️ Sin conexión — conecta a internet para subir documentos');
+    return;
+  }
+
+  const btn = document.getElementById('btn-upload');
+  btn.disabled = true; btn.textContent = 'Subiendo…';
+  const progressEl = document.getElementById('upload-progress');
+  const progressBar = document.getElementById('upload-progress-bar');
+  progressEl.classList.add('visible');
+
+  try {
+    // Animate progress (no real progress events in Supabase JS)
+    let prog = 0;
+    const progTimer = setInterval(() => {
+      prog = Math.min(prog + 8, 85);
+      progressBar.style.width = prog + '%';
+    }, 200);
+
+    // Upload to Supabase Storage
+    const filePath = `${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const { error: uploadError } = await sb.storage
+      .from('rag-documents')
+      .upload(filePath, selectedFile, { cacheControl:'3600', upsert:false });
+
+    if (uploadError) {
+      clearInterval(progTimer);
+      if (uploadError.message?.includes('Bucket not found') || uploadError.statusCode === '404') {
+        showToast('⚠️ Bucket no encontrado — crea "rag-documents" en Supabase > Storage');
+      } else {
+        showToast('⚠️ Error al subir: ' + uploadError.message);
+      }
+      btn.disabled = false; btn.textContent = 'Subir documento';
+      progressEl.classList.remove('visible'); progressBar.style.width = '0%';
+      return;
+    }
+
+    // Insert metadata
+    const { data: docData, error: metaError } = await sb.from('rag_documents').insert({
+      name, description: desc || null, file_path: filePath,
+      file_size: selectedFile.size, mime_type: selectedFile.type || 'application/octet-stream',
+      doc_type: type || null,
+    }).select().single();
+
+    clearInterval(progTimer);
+    progressBar.style.width = '100%';
+
+    if (metaError) {
+      showToast('Archivo subido pero error al guardar metadatos');
+    } else {
+      // Add to local list
+      STATE.ragDocs.unshift({
+        id: docData.id, name, description: desc,
+        file_path: filePath, file_size: selectedFile.size,
+        created_at: new Date().toISOString(), type,
+      });
+      showToast('✓ Documento subido correctamente');
+      setSyncStatus('ok');
+    }
+
+    // Reset form
+    setTimeout(() => {
+      clearFile({stopPropagation:()=>{}});
+      document.getElementById('rag-name').value = '';
+      document.getElementById('rag-desc').value = '';
+      progressEl.classList.remove('visible'); progressBar.style.width = '0%';
+      btn.textContent = 'Subir documento';
+      renderRag();
+    }, 600);
+
+  } catch(err) {
+    showToast('⚠️ Error inesperado al subir');
+    btn.disabled = false; btn.textContent = 'Subir documento';
+    progressEl.classList.remove('visible');
+  }
+}
+
+async function loadRagDocs() {
+  if (!sb || !STATE.cloudOk) return;
+  const { data, error } = await sb.from('rag_documents').select('*').order('created_at', { ascending:false });
+  if (!error) STATE.ragDocs = data || [];
+}
+
+async function downloadDoc(id, filePath, name) {
+  if (!sb) return;
+  const { data, error } = await sb.storage.from('rag-documents').createSignedUrl(filePath, 60);
+  if (error) { showToast('⚠️ No se pudo generar el enlace de descarga'); return; }
+  const a = document.createElement('a');
+  a.href = data.signedUrl; a.download = name; a.target = '_blank';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+async function deleteDoc(id, filePath) {
+  if (!confirm('¿Eliminar este documento?')) return;
+  if (!sb) return;
+  setSyncStatus('syncing');
+  const { error: storageErr } = await sb.storage.from('rag-documents').remove([filePath]);
+  const { error: dbErr }      = await sb.from('rag_documents').delete().eq('id', id);
+  if (storageErr || dbErr) {
+    showToast('⚠️ Error al eliminar');
+    setSyncStatus('offline');
+  } else {
+    STATE.ragDocs = STATE.ragDocs.filter(d => d.id !== id);
+    setSyncStatus('ok');
+    renderRag();
+    showToast('🗑 Documento eliminado');
+  }
+}
+
+function renderRag() {
+  const container = document.getElementById('rag-docs-container');
+  if (!container) return;
+
+  if (!STATE.ragDocs.length) {
+    container.innerHTML = `
+      <div class="rag-empty">
+        <div class="rag-empty-icon">📁</div>
+        <div class="rag-empty-title">Aún no hay documentos</div>
+        <div>Sube tu primer informe o plantilla usando el formulario de arriba.</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="rag-docs-grid">${
+    STATE.ragDocs.map(doc => {
+      const date = new Date(doc.created_at).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+      const size = fmtSize(doc.file_size || 0);
+      const ext  = (doc.file_path || '').split('.').pop().toUpperCase().slice(0,6);
+      return `<div class="rag-doc-card">
+        <div class="rag-doc-name">📎 ${esc(doc.name || doc.file_path)}</div>
+        ${doc.description ? `<div class="rag-doc-desc">${esc(doc.description)}</div>` : ''}
+        <div class="rag-doc-meta">
+          <span class="rag-doc-badge">${ext}</span>
+          <span class="rag-doc-badge">${size}</span>
+          <span class="rag-doc-badge">📅 ${date}</span>
+        </div>
+        <div class="rag-doc-actions">
+          <button class="btn-doc-action btn-doc-download" onclick="downloadDoc('${doc.id}','${esc(doc.file_path)}','${esc(doc.name||'')}')">⬇ Descargar</button>
+          <button class="btn-doc-action btn-doc-delete"   onclick="deleteDoc('${doc.id}','${esc(doc.file_path)}')">🗑 Eliminar</button>
+        </div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  MIC
+// ══════════════════════════════════════════════════════════
+const micState = {};
+
+function toggleMic(id) {
+  const ms = micState[id];
+  if (ms && ms.isRecording) stopMic(id); else startMic(id);
+}
+
+function startMic(id) {
+  micState[id] = { isRecording:true };
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ta = document.getElementById(`ta_${id}`);
+  if (!ta) return;
+
+  if (SR) {
+    const rec = new SR();
+    rec.lang='es-ES'; rec.continuous=true; rec.interimResults=true;
+    const base = ta.value; let final='';
+    rec.onresult = e => {
+      let interim='';
+      for (let i=e.resultIndex;i<e.results.length;i++) {
+        if (e.results[i].isFinal) final+=e.results[i][0].transcript+' ';
+        else interim+=e.results[i][0].transcript;
+      }
+      ta.value=(base.trim()?base.trimEnd()+' ':'')+final+interim;
+      ta.scrollTop=ta.scrollHeight; onInput(id);
+    };
+    rec.onerror = () => stopMic(id);
+    rec.onend   = () => { if (micState[id]?.isRecording){ try{rec.start();}catch(e){} } };
+    rec.start();
+    micState[id].recognition = rec;
+  } else {
+    showToast('Micrófono no disponible en este navegador. Usa Chrome o Edge.');
+    micState[id] = { isRecording:false };
+    return;
+  }
+  setMicUI(id, true);
+}
+
+function stopMic(id) {
+  const ms=micState[id]; if (!ms) return;
+  if (ms.recognition){ try{ms.recognition.stop();}catch(e){} }
+  micState[id] = { isRecording:false };
+  setMicUI(id, false);
+}
+
+function setMicUI(id, on) {
+  const btn = document.getElementById(`mic_${id}`);
+  const bar = document.getElementById(`micbar_${id}`);
+  if (!btn) return;
+  btn.classList.toggle('recording', on);
+  btn.innerHTML = on ? '⏹ Parar' : '🎙 Dictar';
+  if (bar) bar.classList.toggle('active', on);
+}
+
+// ══════════════════════════════════════════════════════════
+//  MODAL HELPERS
+// ══════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('open');    document.body.style.overflow='hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; }
+function closeModalIfOutside(e, id) { if (e.target===document.getElementById(id)) closeModal(id); }
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') ['modal-hist','modal-propose'].forEach(id => {
+    if (document.getElementById(id).classList.contains('open')) closeModal(id);
+  });
+});
+
+// ══════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ══════════════════════════════════════════════════════════
+//  LOADING OVERLAY
+// ══════════════════════════════════════════════════════════
+function setLoadingMsg(msg) {
+  const el = document.getElementById('loading-msg');
+  if (el) el.textContent = msg;
+}
+function hideLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    setTimeout(() => { overlay.style.display = 'none'; }, 400);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════════════════
+(async function boot() {
+  // Init Supabase
+  setLoadingMsg('Conectando con la nube…');
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Try cloud load
+  setLoadingMsg('Cargando tus datos…');
+  const cloudData = await loadFromCloud();
+
+  if (cloudData) {
+    applyCloudData(cloudData);
+    setSyncStatus('ok');
+    // Also load RAG docs and doubts
+    await Promise.all([loadRagDocs(), loadDoubtsFromCloud()]);
+    setLoadingMsg('¡Todo listo!');
+  } else {
+    applyLocalData();
+    setSyncStatus('offline');
+    setLoadingMsg('Sin conexión — cargando datos locales');
+  }
+
+  saveLocal();
+  await delay(400);
+  hideLoading();
+  render();
+  showSessionReminder();
+  // renderRag is called lazily when user clicks the tab
+})();
+</script>
+</body>
+</html>

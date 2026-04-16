@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reunión Auditor — Guía de sesión</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f4f5; color: #1a1a2e; }
+
+  .header {
+    background: #1a1a2e;
+    color: white;
+    padding: 28px 40px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.3px; }
+  .header .meta { font-size: 0.78rem; color: #a0a0b8; text-align: right; line-height: 1.6; }
+  .header .meta strong { color: #e0e0f0; }
+
+  .timeline-bar {
+    background: #12122a;
+    display: flex;
+    padding: 0 40px;
+    border-bottom: 1px solid #2a2a4a;
+  }
+  .timeline-item {
+    padding: 10px 20px 10px 0;
+    font-size: 0.72rem;
+    color: #6060a0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .timeline-item:hover { color: #a0a0d0; }
+  .timeline-item.active { color: #7c8cf8; border-bottom-color: #7c8cf8; }
+  .timeline-item .min { background: #2a2a4a; padding: 2px 7px; border-radius: 10px; font-weight: 700; font-size: 0.68rem; }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  .phase {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    border: 1px solid #e8e8f0;
+  }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1px solid #f0f0f8;
+    cursor: pointer;
+    user-select: none;
+  }
+  .phase-header:hover { background: #fafafa; }
+  .phase-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .phase-title { flex: 1; }
+  .phase-title h2 { font-size: 1rem; font-weight: 600; }
+  .phase-title p { font-size: 0.78rem; color: #888; margin-top: 2px; }
+  .phase-duration {
+    font-size: 0.72rem; font-weight: 700;
+    padding: 4px 12px; border-radius: 20px;
+  }
+  .phase-body { padding: 0; }
+
+  /* Colores por fase */
+  .p1 .phase-num { background: #eff6ff; color: #3b82f6; }
+  .p1 .phase-duration { background: #eff6ff; color: #3b82f6; }
+  .p2 .phase-num { background: #f0fdf4; color: #16a34a; }
+  .p2 .phase-duration { background: #f0fdf4; color: #16a34a; }
+  .p3 .phase-num { background: #fefce8; color: #ca8a04; }
+  .p3 .phase-duration { background: #fefce8; color: #ca8a04; }
+  .p4 .phase-num { background: #fdf4ff; color: #9333ea; }
+  .p4 .phase-duration { background: #fdf4ff; color: #9333ea; }
+  .p5 .phase-num { background: #fff1f2; color: #e11d48; }
+  .p5 .phase-duration { background: #fff1f2; color: #e11d48; }
+
+  .question-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border-bottom: 1px solid #f4f4f8;
+  }
+  .question-block:last-child { border-bottom: none; }
+  .q-left { padding: 18px 24px; border-right: 1px solid #f4f4f8; }
+  .q-right { padding: 18px 24px; background: #fafbff; }
+
+  .q-tag {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: #888;
+    margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .q-tag::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .question-text {
+    font-size: 0.9rem; font-weight: 500; color: #1a1a2e; line-height: 1.5;
+    margin-bottom: 10px;
+  }
+  .followups { list-style: none; }
+  .followups li {
+    font-size: 0.8rem; color: #555; padding: 3px 0 3px 14px;
+    position: relative; line-height: 1.4;
+  }
+  .followups li::before { content: '→'; position: absolute; left: 0; color: #aaa; }
+
+  .system-note {
+    font-size: 0.78rem; color: #6366f1; line-height: 1.5;
+    padding: 10px 12px; background: #f0f0ff; border-radius: 8px;
+    border-left: 3px solid #6366f1;
+    margin-top: 4px;
+  }
+  .system-note strong { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; color: #818cf8; }
+
+  .col-header {
+    padding: 10px 24px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: #aaa;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0; border-bottom: 1px solid #f0f0f8;
+    background: #fafafa;
+  }
+  .col-header span:last-child { padding-left: 24px; }
+
+  .note-box {
+    margin: 16px 24px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .note-box.warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .note-box.info { background: #eff6ff; border: 1px solid #93c5fd; color: #1e3a8a; }
+  .note-box.success { background: #f0fdf4; border: 1px solid #86efac; color: #14532d; }
+  .note-box .icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+  .checklist {
+    padding: 16px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .check-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 0.82rem; color: #444; line-height: 1.4;
+    padding: 8px 12px; border-radius: 8px; background: #fafafa;
+    border: 1px solid #eee;
+  }
+  .check-item input[type=checkbox] { margin-top: 1px; flex-shrink: 0; cursor: pointer; }
+
+  .separator {
+    padding: 12px 24px 4px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: #bbb;
+  }
+
+  @media (max-width: 700px) {
+    .question-block { grid-template-columns: 1fr; }
+    .q-right { border-right: none; border-top: 1px solid #f4f4f8; }
+    .col-header span:last-child { display: none; }
+    .checklist { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Reunión con el Auditor</h1>
+    <div style="font-size:0.78rem;color:#6060a0;margin-top:4px;">Guía de extracción de metodología — Sesión 1</div>
+  </div>
+  <div class="meta">
+    <strong>60 minutos</strong><br>
+    Objetivo: entender cómo audita,<br>no convencerle de nada
+  </div>
+</div>
+
+<div class="timeline-bar">
+  <div class="timeline-item active"><span class="min">0–5'</span> Contexto</div>
+  <div class="timeline-item"><span class="min">5–20'</span> Su proceso</div>
+  <div class="timeline-item"><span class="min">20–40'</span> Dentro de la auditoría</div>
+  <div class="timeline-item"><span class="min">40–52'</span> El entregable</div>
+  <div class="timeline-item"><span class="min">52–60'</span> Cierre</div>
+</div>
+
+<div class="main">
+
+  <!-- FASE 1 -->
+  <div class="phase p1">
+    <div class="phase-header">
+      <div class="phase-num">1</div>
+      <div class="phase-title">
+        <h2>Contexto y perfil</h2>
+        <p>Entender quién es, a quién audita y con qué frecuencia</p>
+      </div>
+      <div class="phase-duration">0 – 5 min</div>
+    </div>
+
+    <div class="note-box info">
+      <span class="icon">ℹ️</span>
+      No vendas nada aquí. Escucha. Estas preguntas son para calibrar el volumen, los sectores y si su trabajo es repetible o cada auditoría es un mundo.
+    </div>
+
+    <div class="col-header">
+      <span>Pregunta</span>
+      <span>Lo que extrae para el sistema</span>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Apertura</div>
+        <div class="question-text">¿Cuántas auditorías haces al año aproximadamente y cómo son de diferentes entre sí?</div>
+        <ul class="followups">
+          <li>¿Siempre el mismo sector o varía mucho?</li>
+          <li>¿Hay sectores donde nunca trabajas?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Confirma volumen (50/año = 1/semana) y si el sistema necesita ser multi-sector o puede empezar con 2-3 sectores core.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Tamaño de empresa</div>
+        <div class="question-text">¿Qué tamaño de empresa es tu cliente típico? ¿Hay alguno con el que no trabajas?</div>
+        <ul class="followups">
+          <li>¿Facturación, empleados?</li>
+          <li>¿Quién te contrata — el dueño, el director de operaciones, RRHH?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Define el ICP del sistema. Si solo hace empresas de 10-100 empleados, el sistema no tiene que escalar a corporates.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FASE 2 -->
+  <div class="phase p2">
+    <div class="phase-header">
+      <div class="phase-num">2</div>
+      <div class="phase-title">
+        <h2>Su proceso de auditoría</h2>
+        <p>Cómo empieza, qué fases tiene, qué recoge</p>
+      </div>
+      <div class="phase-duration">5 – 20 min</div>
+    </div>
+
+    <div class="note-box warn">
+      <span class="icon">⚠️</span>
+      Esta es la parte más importante. No interrumpas. Cuando diga "normalmente hago X", pregunta "¿siempre, o hay excepciones?". Necesitas saber qué es invariante y qué depende del caso.
+    </div>
+
+    <div class="col-header">
+      <span>Pregunta</span>
+      <span>Lo que extrae para el sistema</span>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Estructura general</div>
+        <div class="question-text">Si me cuentas una auditoría típica desde el principio hasta que entregas el informe — ¿qué fases tiene?</div>
+        <ul class="followups">
+          <li>¿Hay una fase de recogida de información antes de hablar con nadie?</li>
+          <li>¿Con cuántas personas sueles hablar?</li>
+          <li>¿Cuántos días/semanas dura normalmente?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Define el wizard de intake: cuántas fases tiene, qué datos se recogen en cada una, si hay una fase documental previa a las entrevistas.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Recogida de información</div>
+        <div class="question-text">¿Qué documentos o datos pides antes de la primera reunión?</div>
+        <ul class="followups">
+          <li>¿Organigramas, flujos de proceso, KPIs?</li>
+          <li>¿Hay algo que cuando no tienes ya te dice algo sobre la empresa?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Lista de documentos de intake. La ausencia de documentos también es un dato — el sistema puede puntuarlo.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Proceso invariante</div>
+        <div class="question-text">¿Hay algo que haces en absolutamente todas las auditorías, sin excepción?</div>
+        <ul class="followups">
+          <li>Preguntas que siempre haces</li>
+          <li>Áreas que siempre revisas</li>
+          <li>Alguien con quien siempre hablas</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Esto es el núcleo obligatorio del sistema — los módulos que no se pueden desactivar. El oro de esta reunión.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Lo que varía</div>
+        <div class="question-text">¿Qué cambias dependiendo del sector o del tamaño de la empresa?</div>
+        <ul class="followups">
+          <li>¿Hay preguntas que solo haces en ciertos sectores?</li>
+          <li>¿Hay áreas que ignoras en empresas pequeñas?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Define la lógica condicional: qué módulos son obligatorios, cuáles se activan por sector, cuáles por tamaño.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FASE 3 -->
+  <div class="phase p3">
+    <div class="phase-header">
+      <div class="phase-num">3</div>
+      <div class="phase-title">
+        <h2>Dentro de la auditoría</h2>
+        <p>Qué mide, cómo evalúa, cómo prioriza</p>
+      </div>
+      <div class="phase-duration">20 – 40 min</div>
+    </div>
+
+    <div class="note-box info">
+      <span class="icon">💡</span>
+      Aquí empieza la extracción de metodología real. Cuando dé ejemplos concretos, pide que los complete: "¿y qué significa para ti que ese proceso esté bien o mal?". Necesitas sus criterios, no sus observaciones.
+    </div>
+
+    <div class="col-header">
+      <span>Pregunta</span>
+      <span>Lo que extrae para el sistema</span>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Áreas que audita</div>
+        <div class="question-text">¿Qué áreas de la empresa cubres en una auditoría estándar?</div>
+        <ul class="followups">
+          <li>¿Hay alguna que consideres siempre el punto de partida?</li>
+          <li>¿Alguna que dejes para el final porque depende de las demás?</li>
+          <li>¿Hay relaciones entre áreas que siempre revisas juntas?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Mapa de áreas y dependencias entre ellas. Si siempre revisa operaciones antes que ventas, eso define el orden del wizard.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Modelo de madurez</div>
+        <div class="question-text">Cuando evalúas un proceso, ¿cómo decides si está bien, mal o en un punto intermedio?</div>
+        <ul class="followups">
+          <li>¿Usas alguna escala o es más cualitativo?</li>
+          <li>¿Qué hace que un proceso esté "bien" para ti?</li>
+          <li>¿Has visto alguna vez una empresa donde todo estaba realmente bien?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Base del modelo de scoring. Si usa escalas propias, eso es la lógica de puntuación. Si es cualitativo, el sistema necesita convertirlo en criterios observables.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Cuellos de botella</div>
+        <div class="question-text">¿Cómo detectas los cuellos de botella reales? ¿Los ves en los datos o los escuchas en las entrevistas?</div>
+        <ul class="followups">
+          <li>¿Hay señales que casi siempre indican un cuello de botella aunque el cliente no lo vea?</li>
+          <li>¿Recuerdas un ejemplo reciente donde el problema real era distinto al que te dijeron al principio?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Reglas de detección de anomalías. Las señales que él identifica por intuición se pueden convertir en flags automáticos cuando ciertos datos coinciden.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Priorización</div>
+        <div class="question-text">Con todos los hallazgos encima de la mesa, ¿cómo decides qué es urgente y qué puede esperar?</div>
+        <ul class="followups">
+          <li>¿Usas algún criterio (impacto × esfuerzo, riesgo, etc.)?</li>
+          <li>¿Hay tipos de problemas que siempre pones primero, independientemente del tamaño?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Lógica de priorización del roadmap. Esto define los ejes del modelo de madurez y cómo se ordenan las recomendaciones.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Lo que nunca falla</div>
+        <div class="question-text">¿Hay problemas que encuentras en casi todas las empresas, independientemente del sector?</div>
+        <ul class="followups">
+          <li>¿Cuáles son los 3 problemas más comunes que ves?</li>
+          <li>¿Hay alguno que las empresas siempre subestiman?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Los problemas universales se convierten en módulos core del sistema con benchmarks propios. Son los más fáciles de sistematizar y los más convincentes para el cliente.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Lo que no se puede sistematizar</div>
+        <div class="question-text">¿Qué parte de tu trabajo crees que es imposible de replicar sin experiencia?</div>
+        <ul class="followups">
+          <li>¿Qué errores cometería alguien que siguiera tu proceso pero sin tu experiencia?</li>
+          <li>¿Hay situaciones donde tus instintos te llevan a un sitio que los datos no indican?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Define los límites del sistema — qué necesita intervención humana. También identifica dónde el sistema tiene que pedir más datos para compensar la falta de intuición.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FASE 4 -->
+  <div class="phase p4">
+    <div class="phase-header">
+      <div class="phase-num">4</div>
+      <div class="phase-title">
+        <h2>El entregable</h2>
+        <p>Qué recibe el cliente, en qué formato, cómo lo presenta</p>
+      </div>
+      <div class="phase-duration">40 – 52 min</div>
+    </div>
+
+    <div class="note-box success">
+      <span class="icon">✅</span>
+      Si tienes tiempo, pídele que te muestre un informe real (anonimizado). Ver el formato de su output vale más que cualquier descripción verbal. Si no puede, pide que te describa la estructura exacta página por página.
+    </div>
+
+    <div class="col-header">
+      <span>Pregunta</span>
+      <span>Lo que extrae para el sistema</span>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Formato del informe</div>
+        <div class="question-text">¿Cómo es el informe que entregas? ¿Qué tiene siempre?</div>
+        <ul class="followups">
+          <li>¿Cuántas páginas suele tener?</li>
+          <li>¿Hay un resumen ejecutivo? ¿Va al principio o al final?</li>
+          <li>¿Usas gráficos, tablas, texto?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Define la estructura del PDF de output. El sistema tiene que generar un formato que él reconozca como profesional según sus estándares.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Presentación al cliente</div>
+        <div class="question-text">¿Cómo presentas los resultados? ¿En persona, por escrito, con una sesión de cierre?</div>
+        <ul class="followups">
+          <li>¿Qué preguntas te hacen siempre en esa reunión?</li>
+          <li>¿Cuál es la reacción más frecuente del cliente al ver el informe?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Define si el sistema genera solo el informe o también un deck de presentación. Las preguntas frecuentes del cliente son FAQs que el sistema puede anticipar.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">El roadmap</div>
+        <div class="question-text">¿Cómo estructuras las recomendaciones? ¿Con plazos, con fases, con responsables?</div>
+        <ul class="followups">
+          <li>¿Sueles diferenciar entre lo que pueden hacer solos y lo que necesita ayuda externa?</li>
+          <li>¿Hay un horizonte temporal estándar que uses (3 meses / 6 meses / 1 año)?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Estructura del roadmap del sistema. Si siempre usa 3 horizontes temporales, el sistema los replica. Si diferencia interna/externa, eso es una dimensión clave del output.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FASE 5 -->
+  <div class="phase p5">
+    <div class="phase-header">
+      <div class="phase-num">5</div>
+      <div class="phase-title">
+        <h2>Cierre</h2>
+        <p>Qué piensa de sistematizar su metodología</p>
+      </div>
+      <div class="phase-duration">52 – 60 min</div>
+    </div>
+
+    <div class="note-box warn">
+      <span class="icon">⚠️</span>
+      No presentes el proyecto todavía. Solo siembra la pregunta. El objetivo de esta sesión es escucharle, no venderle. Si hay química y le interesa, él mismo preguntará "¿y qué tenías en mente?".
+    </div>
+
+    <div class="col-header">
+      <span>Pregunta</span>
+      <span>Lo que extrae para el sistema</span>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Fricción actual</div>
+        <div class="question-text">¿Qué es lo más tedioso o repetitivo en tu proceso actual?</div>
+        <ul class="followups">
+          <li>¿Hay algo que haces en cada auditoría y sientes que es puro tiempo?</li>
+          <li>¿Si pudieras eliminar una parte del proceso, cuál sería?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Identifica el dolor exacto. Si el dolor es la generación del informe, el sistema empieza por ahí. Si es la recogida de datos, empieza por el intake. El problema que más le duele es la primera funcionalidad que construyes.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Escalabilidad</div>
+        <div class="question-text">¿Si quisieras hacer el doble de auditorías al año, qué te lo impediría?</div>
+        <ul class="followups">
+          <li>¿Tiempo, precio, equipo?</li>
+          <li>¿Has pensado en tener a alguien que te ayude?</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Define si el sistema tiene que ser una herramienta de productividad para él o si el objetivo es que delegue partes del proceso a un sistema o a otra persona usando el sistema.
+        </div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="q-left">
+        <div class="q-tag">Cierre abierto</div>
+        <div class="question-text">Estoy trabajando en algo relacionado con sistematizar auditorías de procesos. ¿Te parece interesante o crees que hay partes que simplemente no se pueden sistematizar?</div>
+        <ul class="followups">
+          <li>[Escucha su reacción sin interrumpir]</li>
+          <li>Si pregunta qué tienes en mente: "Todavía lo estoy diseñando y por eso quería escucharte primero."</li>
+        </ul>
+      </div>
+      <div class="q-right">
+        <div class="system-note">
+          <strong>Para el sistema</strong>
+          Su reacción te dice si hay base para una colaboración. Si dice "hay partes que no se pueden sistematizar", esas son exactamente las que necesitas que él te explique.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKLIST FINAL -->
+  <div class="phase" style="background:white;">
+    <div class="phase-header" style="cursor:default;">
+      <div class="phase-num" style="background:#f1f5f9;color:#475569;">✓</div>
+      <div class="phase-title">
+        <h2>Lo que debes salir con esto</h2>
+        <p>Checklist de información mínima que necesitas al terminar la reunión</p>
+      </div>
+    </div>
+
+    <div class="checklist">
+      <div class="check-item"><input type="checkbox"> Fases de su proceso (de intake a entrega)</div>
+      <div class="check-item"><input type="checkbox"> Qué hace en todas las auditorías sin excepción</div>
+      <div class="check-item"><input type="checkbox"> Las áreas que siempre cubre y en qué orden</div>
+      <div class="check-item"><input type="checkbox"> Cómo puntúa o evalúa un proceso (su escala)</div>
+      <div class="check-item"><input type="checkbox"> Los 3 problemas más comunes que siempre ve</div>
+      <div class="check-item"><input type="checkbox"> Cómo prioriza los hallazgos</div>
+      <div class="check-item"><input type="checkbox"> Estructura exacta del informe que entrega</div>
+      <div class="check-item"><input type="checkbox"> Qué parte de su trabajo es más tedioso/repetitivo</div>
+      <div class="check-item"><input type="checkbox"> Si quiere hacer más auditorías y qué se lo impide</div>
+      <div class="check-item"><input type="checkbox"> Su reacción inicial a la idea de sistematizar</div>
+    </div>
+
+    <div class="note-box info" style="margin:0 24px 20px;">
+      <span class="icon">📝</span>
+      <div>Graba la reunión si te da permiso. Después, vuelca las respuestas en un documento y pásaselo a Claude para convertirlas en la primera versión de la estructura del sistema. La próxima sesión con él ya es sobre un boceto concreto, no sobre preguntas abiertas.</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1184,8 +1184,11 @@ async function deleteDoubt(id) {
   STATE.doubts = STATE.doubts.filter(d => d.id !== id);
   renderDudas();
   showToast('🗑 Duda eliminada');
-  if (sb && STATE.cloudOk && !String(id).startsWith('local_')) {
-    await sb.from('doubts').delete().eq('id', id);
+  // Sync siempre — no depende de cloudOk, y las locales no tienen UUID en Supabase
+  if (sb && !String(id).startsWith('local_')) {
+    const { error } = await sb.from('doubts').delete().eq('id', id);
+    if (error) showToast('⚠️ No se pudo borrar en la nube — recarga para sincronizar');
+    else STATE.cloudOk = true;
   }
 }
 
@@ -1409,15 +1412,26 @@ function deleteEntry(questionId, origIdx) {
     render();
   }
   showToast('🗑 Entrada eliminada');
-  // Sync fiable: borrar todos los entries de esa pregunta y reinsertar los que quedan
-  if (sb && STATE.cloudOk) syncQuestionEntries(questionId);
+  // Sync siempre — no depende de cloudOk para no dejar basura en Supabase
+  if (sb) syncQuestionEntries(questionId);
 }
 
-async function syncQuestionEntries(questionId) {
+async function syncQuestionEntries(questionId, attempt = 1) {
+  if (!sb) return;
   setSyncStatus('syncing');
   // 1. Borrar todos en Supabase para esta pregunta
   const { error: delErr } = await sb.from('entries').delete().eq('question_id', questionId);
-  if (delErr) { setSyncStatus('offline'); return; }
+  if (delErr) {
+    if (attempt < 3) {
+      // Reintentar hasta 3 veces con backoff
+      setTimeout(() => syncQuestionEntries(questionId, attempt + 1), attempt * 2000);
+      setSyncStatus('syncing');
+    } else {
+      setSyncStatus('offline');
+      showToast('⚠️ No se pudo borrar en la nube — recarga para sincronizar');
+    }
+    return;
+  }
   // 2. Reinsertar los que quedan en STATE
   const remaining = STATE.entries[questionId] || [];
   if (remaining.length > 0) {
@@ -1433,6 +1447,7 @@ async function syncQuestionEntries(questionId) {
       saveLocal();
     }
   }
+  STATE.cloudOk = true;
   setSyncStatus('ok');
 }
 

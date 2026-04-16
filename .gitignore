@@ -1,0 +1,13 @@
+# Archivos sensibles
+Password*.docx
+*.env
+.env*
+
+# Claude Code — settings locales (contienen paths personales)
+.claude/settings.local.json
+lars-knowledge-system/.claude/settings.local.json
+lars-knowledge-system/CLAUDE.local.md
+
+# OS
+.DS_Store
+Thumbs.db

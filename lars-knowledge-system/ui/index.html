@@ -238,6 +238,40 @@ body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:
 .h-badge { background:var(--accent-light); color:var(--accent); font-size:.6rem; font-weight:700; padding:1px 6px; border-radius:20px; }
 .no-entries { font-size:.63rem; color:var(--text3); }
 
+/* ── DELETE CARD ── */
+.btn-delete-card {
+  background:none; border:none; cursor:pointer; padding:3px 5px;
+  color:var(--text3); border-radius:4px; font-size:.72rem;
+  opacity:0; transition:opacity .15s, color .15s, background .15s;
+  flex-shrink:0; margin-top:2px; line-height:1;
+}
+.q-card:hover .btn-delete-card { opacity:1; }
+.btn-delete-card:hover { color:var(--danger); background:#fee2e2; }
+
+/* ── BTN DANGER ── */
+.btn-danger {
+  background:var(--danger); color:white; border:none;
+  padding:8px 16px; border-radius:var(--radius2); font-size:.78rem; font-weight:700; cursor:pointer;
+  transition:background .15s;
+}
+.btn-danger:hover { background:#dc2626; }
+
+/* ── DELETED CARDS LOG ── */
+.deleted-log {
+  grid-column: 1 / -1;
+  background: var(--surface); border: 1.5px solid #fca5a5;
+  border-radius: var(--radius); padding: 14px 18px; margin-top: 4px;
+}
+.deleted-log-title {
+  font-size:.72rem; font-weight:700; color:#dc2626;
+  margin-bottom:10px; display:flex; align-items:center; gap:6px;
+}
+.deleted-log-item { padding:8px 0; border-bottom:1px solid var(--border); }
+.deleted-log-item:last-child { border-bottom:none; }
+.deleted-log-item-title { font-size:.78rem; font-weight:600; color:var(--text); }
+.deleted-log-item-meta { font-size:.65rem; color:var(--text3); margin-top:2px; }
+.deleted-log-item-reason { font-size:.72rem; color:var(--text2); font-style:italic; margin-top:3px; }
+
 /* ── FAB ── */
 .fab {
   position:fixed; bottom:28px; right:28px; z-index:250;
@@ -725,6 +759,34 @@ textarea.upload-input { min-height:72px; resize:vertical; }
   </div>
 </div>
 
+<!-- ── MODAL: ELIMINAR CARD ── -->
+<div class="modal-overlay" id="modal-delete-card" onclick="closeModalIfOutside(event,'modal-delete-card')">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">🗑 Eliminar card</div>
+        <div class="modal-subtitle" id="del-card-subtitle"></div>
+      </div>
+      <button class="btn-close" onclick="closeModal('modal-delete-card')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="del-card-title" style="font-size:.82rem;font-weight:600;color:var(--text);background:var(--surface2);border-radius:var(--radius2);padding:10px 12px;margin-bottom:14px;border:1px solid var(--border)"></div>
+      <div class="field-block">
+        <div class="field-label">Motivo (opcional)</div>
+        <div class="field-hint">¿Por qué eliminas esta card? Quedará registrado.</div>
+        <textarea class="modal-input" id="del-card-reason" placeholder="Ej: No aplica a mi metodología, pregunta duplicada…" style="height:80px"></textarea>
+      </div>
+      <div style="font-size:.7rem;color:var(--text3);margin-top:10px;padding:8px 10px;background:#fff8f0;border-radius:var(--radius2);border:1px solid #fed7aa">
+        ⚠️ Esta acción queda registrada. Si la eliminas por error, contacta a Kevin para recuperarla.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-delete-card')">Cancelar</button>
+      <button class="btn-danger" onclick="confirmDeleteCard()">Eliminar card →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── SUPABASE SDK ── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
@@ -814,6 +876,8 @@ const STATE = {
   drafts: {},
   ragDocs: [],   // loaded from Supabase rag_documents table
   doubts:  [],   // loaded from Supabase doubts table
+  hiddenCards:   [], // IDs de preguntas built-in eliminadas por Lars
+  deletedCards:  [], // registro de auditoría de cards eliminadas
   cloudOk: false,
 };
 
@@ -840,6 +904,7 @@ function saveLocal() {
       currentSession: STATE.currentSession, sessions: STATE.sessions,
       questionOrder: STATE.questionOrder, customQuestions: STATE.customQuestions,
       entries: STATE.entries, done: STATE.done,
+      hiddenCards: STATE.hiddenCards, deletedCards: STATE.deletedCards,
     }));
   } catch(e) { console.warn('localStorage save error', e); }
 }
@@ -849,18 +914,24 @@ function saveLocal() {
 // ══════════════════════════════════════════════════════════
 async function loadFromCloud() {
   try {
-    const [entriesRes, stateRes, customRes, orderRes, sessionsRes] = await Promise.all([
+    const [entriesRes, stateRes, customRes, orderRes, sessionsRes, deletedRes] = await Promise.all([
       sb.from('entries').select('*').order('created_at'),
       sb.from('question_state').select('*'),
       sb.from('custom_questions').select('*').order('created_at'),
       sb.from('question_order').select('*').limit(1),
       sb.from('sessions').select('*').order('n'),
+      sb.from('deleted_cards').select('*').order('deleted_at'),
     ]);
 
-    // Check for errors
+    // Check for errors (deleted_cards may not exist yet — ignore its error)
     if (entriesRes.error || stateRes.error || customRes.error || orderRes.error || sessionsRes.error) {
       throw new Error('Supabase query error');
     }
+    const deletedCards = (deletedRes.data || []).map(r => ({
+      id: r.question_id, title: r.question_title, sec: r.section,
+      isCustom: r.is_custom, session: r.session_n, date: r.date_label,
+      reason: r.reason || '', deletedAt: r.deleted_at,
+    }));
 
     // Build entries map
     const entriesMap = {};
@@ -908,7 +979,7 @@ async function loadFromCloud() {
       }
     }
 
-    return { entriesMap, doneMap, customQs, questionOrder, sessions, currentSession };
+    return { entriesMap, doneMap, customQs, questionOrder, sessions, currentSession, deletedCards };
   } catch(err) {
     console.error('Cloud load error:', err);
     return null;
@@ -922,6 +993,8 @@ function applyCloudData(data) {
   STATE.questionOrder   = Array.isArray(data.questionOrder) ? data.questionOrder : QUESTIONS_DEFAULT.map(q=>q.id);
   STATE.sessions        = data.sessions;
   STATE.currentSession  = data.currentSession;
+  STATE.deletedCards    = data.deletedCards || [];
+  STATE.hiddenCards     = STATE.deletedCards.map(r => r.id);
   STATE.cloudOk         = true;
 }
 
@@ -946,6 +1019,8 @@ function applyLocalData() {
   STATE.customQuestions = saved.customQuestions || [];
   STATE.entries         = saved.entries || {};
   STATE.done            = saved.done || {};
+  STATE.hiddenCards     = saved.hiddenCards  || [];
+  STATE.deletedCards    = saved.deletedCards || [];
   STATE.cloudOk         = false;
 }
 
@@ -1035,7 +1110,8 @@ function showTab(name) {
 //  ORDERED QUESTIONS
 // ══════════════════════════════════════════════════════════
 function getOrderedQuestions() {
-  const all = [...QUESTIONS_DEFAULT, ...STATE.customQuestions];
+  const hidden = new Set(STATE.hiddenCards);
+  const all = [...QUESTIONS_DEFAULT, ...STATE.customQuestions].filter(q => !hidden.has(q.id));
   const map = Object.fromEntries(all.map(q => [q.id, q]));
   const ordered = STATE.questionOrder.map(id => map[id]).filter(Boolean);
   all.forEach(q => { if (!STATE.questionOrder.includes(q.id)) ordered.push(q); });
@@ -1051,6 +1127,7 @@ function render() {
   setupDrag();
   updateProgress();
   renderSections();
+  renderDeletedCards();
   document.getElementById('session-badge').textContent = 'Sesión ' + STATE.currentSession;
 }
 
@@ -1086,6 +1163,7 @@ function cardHTML(q, idx) {
         <div class="q-title">${q.title}</div>
         ${q.ctx ? `<div class="q-context">${q.ctx}</div>` : ''}
       </div>
+      <button class="btn-delete-card" onclick="openDeleteCardModal('${q.id}')" title="Eliminar esta card">🗑</button>
     </div>
     <div class="q-compose">
       <div class="compose-top-row">
@@ -1533,6 +1611,99 @@ function confirmNewCards() {
 }
 
 // ══════════════════════════════════════════════════════════
+//  ELIMINAR CARD
+// ══════════════════════════════════════════════════════════
+let pendingDeleteId = null;
+
+function openDeleteCardModal(id) {
+  const q = [...QUESTIONS_DEFAULT, ...STATE.customQuestions].find(x => x.id === id);
+  if (!q) return;
+  pendingDeleteId = id;
+  document.getElementById('del-card-title').textContent = q.title;
+  document.getElementById('del-card-subtitle').textContent =
+    q.sec ? `Sección: ${q.sec}` : 'Se eliminará esta pregunta de la lista';
+  document.getElementById('del-card-reason').value = '';
+  openModal('modal-delete-card');
+}
+
+function confirmDeleteCard() {
+  if (!pendingDeleteId) return;
+  const id     = pendingDeleteId;
+  const reason = document.getElementById('del-card-reason').value.trim();
+  const q      = [...QUESTIONS_DEFAULT, ...STATE.customQuestions].find(x => x.id === id);
+  if (!q) { closeModal('modal-delete-card'); return; }
+
+  const record = {
+    id, title: q.title, sec: q.sec || '', isCustom: !!q.isNew,
+    session: STATE.currentSession, date: todayLabel(),
+    reason, deletedAt: new Date().toISOString(),
+  };
+
+  // 1. Registrar en log de auditoría
+  STATE.deletedCards.push(record);
+
+  // 2. Ocultar la card (filtro en getOrderedQuestions)
+  STATE.hiddenCards.push(id);
+  STATE.questionOrder = STATE.questionOrder.filter(x => x !== id);
+
+  // 3. Si es custom, eliminar del array y de Supabase
+  if (q.isNew) {
+    STATE.customQuestions = STATE.customQuestions.filter(x => x.id !== id);
+    if (sb) sb.from('custom_questions').delete().eq('id', id);
+  }
+
+  saveLocal();
+  cloudSaveDeletedCard(record);
+  cloudSaveOrder(STATE.questionOrder);
+  closeModal('modal-delete-card');
+  pendingDeleteId = null;
+  render();
+  showToast('🗑 Card eliminada — queda registrado');
+}
+
+async function cloudSaveDeletedCard(record) {
+  if (!sb) return;
+  setSyncStatus('syncing');
+  const { error } = await sb.from('deleted_cards').insert({
+    question_id:    record.id,
+    question_title: record.title,
+    section:        record.sec,
+    is_custom:      record.isCustom,
+    session_n:      record.session,
+    date_label:     record.date,
+    reason:         record.reason,
+    deleted_at:     record.deletedAt,
+  });
+  setSyncStatus(error ? 'offline' : 'ok');
+  if (error) showToast('⚠️ Eliminación guardada localmente — sin conexión');
+}
+
+function renderDeletedCards() {
+  const grid = document.getElementById('cards-grid');
+  // Eliminar log previo si existe
+  const prev = document.getElementById('deleted-cards-log');
+  if (prev) prev.remove();
+
+  if (!STATE.deletedCards.length) return;
+
+  const el = document.createElement('div');
+  el.id = 'deleted-cards-log';
+  el.className = 'deleted-log';
+  el.innerHTML = `
+    <div class="deleted-log-title">🗑 Cards eliminadas por Lars (${STATE.deletedCards.length})</div>
+    ${STATE.deletedCards.map(r => `
+      <div class="deleted-log-item">
+        <div class="deleted-log-item-title">${esc(r.title)}</div>
+        <div class="deleted-log-item-meta">
+          ${r.sec ? `📂 ${esc(r.sec)} · ` : ''}📅 ${esc(r.date)} · Sesión ${r.session}
+          ${r.isCustom ? ' · <em>pregunta propia</em>' : ''}
+        </div>
+        ${r.reason ? `<div class="deleted-log-item-reason">Motivo: "${esc(r.reason)}"</div>` : ''}
+      </div>`).join('')}`;
+  grid.appendChild(el);
+}
+
+// ══════════════════════════════════════════════════════════
 //  EXPORT JSON
 // ══════════════════════════════════════════════════════════
 function exportJSON() {
@@ -1832,7 +2003,7 @@ function openModal(id)  { document.getElementById(id).classList.add('open');    
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; }
 function closeModalIfOutside(e, id) { if (e.target===document.getElementById(id)) closeModal(id); }
 document.addEventListener('keydown', e => {
-  if (e.key==='Escape') ['modal-hist','modal-propose'].forEach(id => {
+  if (e.key==='Escape') ['modal-hist','modal-propose','modal-delete-card'].forEach(id => {
     if (document.getElementById(id).classList.contains('open')) closeModal(id);
   });
 });

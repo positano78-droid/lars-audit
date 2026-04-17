@@ -73,6 +73,19 @@ create table if not exists doubts (
   created_at  timestamptz default now()
 );
 
+-- 8. Registro de cards eliminadas por Lars (auditoría)
+create table if not exists deleted_cards (
+  id             uuid primary key default gen_random_uuid(),
+  question_id    text not null,         -- ID original de la card ("q1_1", "custom_xxx")
+  question_title text,                  -- texto de la pregunta
+  section        text,                  -- sección a la que pertenecía
+  is_custom      boolean default false, -- true si era una pregunta propuesta por Lars
+  session_n      integer,               -- sesión en la que se eliminó
+  date_label     text,                  -- "17 abr. 2026"
+  reason         text,                  -- motivo escrito por Lars (opcional)
+  deleted_at     timestamptz default now()
+);
+
 -- ── RLS (Row Level Security) ──
 -- Activar RLS en todas las tablas
 alter table sessions         enable row level security;
@@ -82,6 +95,7 @@ alter table custom_questions enable row level security;
 alter table question_order   enable row level security;
 alter table rag_documents    enable row level security;
 alter table doubts           enable row level security;
+alter table deleted_cards    enable row level security;
 
 -- Permitir todo al rol anon (Phase 1 — herramienta de un solo usuario, sin login)
 -- Drop primero por si ya existen de una ejecución anterior
@@ -92,6 +106,7 @@ drop policy if exists "anon_all_custom_questions" on custom_questions;
 drop policy if exists "anon_all_question_order"   on question_order;
 drop policy if exists "anon_all_rag_documents"    on rag_documents;
 drop policy if exists "anon_all_doubts"           on doubts;
+drop policy if exists "anon_all_deleted_cards"    on deleted_cards;
 
 create policy "anon_all_sessions"         on sessions         for all to anon using (true) with check (true);
 create policy "anon_all_entries"          on entries          for all to anon using (true) with check (true);
@@ -100,6 +115,7 @@ create policy "anon_all_custom_questions" on custom_questions  for all to anon u
 create policy "anon_all_question_order"   on question_order   for all to anon using (true) with check (true);
 create policy "anon_all_rag_documents"    on rag_documents    for all to anon using (true) with check (true);
 create policy "anon_all_doubts"           on doubts           for all to anon using (true) with check (true);
+create policy "anon_all_deleted_cards"    on deleted_cards    for all to anon using (true) with check (true);
 
 -- ── Storage bucket ──
 -- Crea el bucket manualmente en Supabase > Storage > New bucket
@@ -115,6 +131,23 @@ create policy "anon_all_doubts"           on doubts           for all to anon us
 alter table entries       add column if not exists section        text;
 alter table entries       add column if not exists question_title text;
 alter table rag_documents add column if not exists doc_type       text;
+
+-- Migración: tabla deleted_cards (2026-04-17)
+-- Si ya corriste el setup completo arriba, esta línea es redundante pero segura
+create table if not exists deleted_cards (
+  id             uuid primary key default gen_random_uuid(),
+  question_id    text not null,
+  question_title text,
+  section        text,
+  is_custom      boolean default false,
+  session_n      integer,
+  date_label     text,
+  reason         text,
+  deleted_at     timestamptz default now()
+);
+alter table deleted_cards enable row level security;
+drop policy if exists "anon_all_deleted_cards" on deleted_cards;
+create policy "anon_all_deleted_cards" on deleted_cards for all to anon using (true) with check (true);
 
 -- ══════════════════════════════════════════════════════════
 --  VISTA — section_coverage

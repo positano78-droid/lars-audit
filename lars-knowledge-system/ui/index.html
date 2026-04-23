@@ -122,6 +122,14 @@ body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:
   transition:transform .15s, box-shadow .15s;
 }
 .btn-new-process:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(91,106,240,.45); }
+.btn-blank-card {
+  display:flex; align-items:center; gap:7px; flex-shrink:0;
+  background:var(--surface); color:var(--accent); border:1.5px solid var(--accent);
+  padding:10px 18px; border-radius:var(--radius2);
+  font-size:.82rem; font-weight:700; cursor:pointer;
+  transition:background .15s, color .15s;
+}
+.btn-blank-card:hover { background:var(--accent-light); }
 .instr-steps { display:flex; gap:10px; flex-wrap:wrap; }
 .instr-step {
   display:flex; align-items:flex-start; gap:8px;
@@ -533,7 +541,10 @@ textarea.upload-input { min-height:72px; resize:vertical; }
           <div class="instr-title">Sistema de captura de metodología</div>
           <div class="instr-subtitle">Este sistema recoge cómo trabajas tú — tu proceso, tu criterio, tus patrones. Cada card es una pregunta sobre tu metodología. Respóndelas en el orden que prefieras y en las sesiones que necesites. Todo queda guardado automáticamente en la nube.</div>
         </div>
-        <button class="btn-new-process" onclick="openProposeModal()">＋ Proponer nuevo proceso</button>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn-blank-card" onclick="openBlankCardModal()">＋ Tarjeta libre</button>
+          <button class="btn-new-process" onclick="openProposeModal()">＋ Proponer nuevo proceso</button>
+        </div>
       </div>
       <div class="instr-steps">
         <div class="instr-step"><div class="step-num">1</div><div class="step-text"><strong>Escribe o dicta</strong> tu respuesta en cada card. Puedes hacerlo en varias sesiones.</div></div>
@@ -782,6 +793,32 @@ textarea.upload-input { min-height:72px; resize:vertical; }
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeModal('modal-delete-card')">Cancelar</button>
       <button class="btn-danger" onclick="confirmDeleteCard()">Eliminar card →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: TARJETA LIBRE ── -->
+<div class="modal-overlay" id="modal-blank-card" onclick="closeModalIfOutside(event,'modal-blank-card')">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Nueva tarjeta libre</div>
+        <div class="modal-subtitle">Escribe el título y la tarjeta quedará lista para que escribas en ella</div>
+      </div>
+      <button class="btn-close" onclick="closeModal('modal-blank-card')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-block">
+        <div class="field-label">Título del proceso o tema</div>
+        <input type="text" class="modal-input" id="blank-card-title"
+          placeholder="Ej: Reunión de cierre, Revisión documental…"
+          oninput="onBlankTitleInput()"
+          onkeydown="if(event.key==='Enter')createBlankCard()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('modal-blank-card')">Cancelar</button>
+      <button class="btn-primary" id="btn-create-blank" onclick="createBlankCard()" disabled>Crear tarjeta →</button>
     </div>
   </div>
 </div>
@@ -1560,13 +1597,8 @@ function startGenerating() {
     pendingQuestions = generateQuestions(name, context);
     document.getElementById('step3-name').textContent = name;
     document.getElementById('gen-intro').innerHTML =
-      `El sistema propone <strong>${pendingQuestions.length} preguntas</strong> para profundizar en <em>${name}</em>. Revísalas y añádelas cuando estés listo.`;
-    document.getElementById('gen-list').innerHTML =
-      pendingQuestions.map((q,i)=>`
-        <div class="gen-q-item">
-          <div class="gen-q-num">${i+1}</div>
-          <div class="gen-q-text">${q}</div>
-        </div>`).join('');
+      `El sistema propone <strong>${pendingQuestions.length} preguntas</strong> para profundizar en <em>${name}</em>. Edítalas, elimínalas o añade las tuyas.`;
+    renderGenList();
     showStep(3);
   }, 1800);
 }
@@ -1586,9 +1618,35 @@ function generateQuestions(name, context) {
   return qs;
 }
 
+function renderGenList() {
+  document.getElementById('gen-list').innerHTML =
+    pendingQuestions.map((q, i) => `
+      <div class="gen-q-item" style="align-items:center">
+        <div class="gen-q-num" style="flex-shrink:0">${i+1}</div>
+        <input class="modal-input gen-q-input" value="${esc(q)}" placeholder="Escribe la pregunta…" style="flex:1;min-width:0;margin:0 6px 0 0">
+        <button onclick="deleteGenQuestion(${i})" class="btn-close" title="Eliminar pregunta" style="flex-shrink:0">✕</button>
+      </div>`).join('') +
+    `<button onclick="addGenQuestion()" class="btn-secondary" style="width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px">＋ Añadir pregunta</button>`;
+}
+
+function deleteGenQuestion(idx) {
+  pendingQuestions.splice(idx, 1);
+  renderGenList();
+}
+
+function addGenQuestion() {
+  pendingQuestions.push('');
+  renderGenList();
+  const inputs = document.querySelectorAll('.gen-q-input');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
 function confirmNewCards() {
-  if (!pendingQuestions || !pendingName) return;
-  const newQs = pendingQuestions.map((title,i) => ({
+  if (!pendingName) return;
+  const inputs = document.querySelectorAll('.gen-q-input');
+  const titles = [...inputs].map(el => el.value.trim()).filter(Boolean);
+  if (!titles.length) { showToast('Añade al menos una pregunta'); return; }
+  const newQs = titles.map((title, i) => ({
     id:    `custom_${Date.now()}_${i}`,
     sec:   pendingName,
     title,
@@ -1607,6 +1665,38 @@ function confirmNewCards() {
     if (last) last.scrollIntoView({behavior:'smooth',block:'center'});
   }, 100);
   showToast(`✓ ${newQs.length} cards añadidas — "${pendingName}"`);
+}
+
+// ══════════════════════════════════════════════════════════
+//  TARJETA LIBRE
+// ══════════════════════════════════════════════════════════
+function openBlankCardModal() {
+  document.getElementById('blank-card-title').value = '';
+  document.getElementById('btn-create-blank').disabled = true;
+  openModal('modal-blank-card');
+}
+
+function onBlankTitleInput() {
+  const val = document.getElementById('blank-card-title').value.trim();
+  document.getElementById('btn-create-blank').disabled = !val;
+}
+
+function createBlankCard() {
+  const title = document.getElementById('blank-card-title').value.trim();
+  if (!title) return;
+  const q = { id: 'custom_' + Date.now() + '_0', sec: 'Mis procesos', title, ctx: '', isNew: true };
+  STATE.customQuestions.push(q);
+  STATE.questionOrder.push(q.id);
+  saveLocal();
+  cloudSaveCustomQuestion(q);
+  cloudSaveOrder(STATE.questionOrder);
+  closeModal('modal-blank-card');
+  render();
+  setTimeout(() => {
+    const card = document.getElementById('card_' + q.id);
+    if (card) card.scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 100);
+  showToast('✓ Tarjeta creada — "' + title + '"');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2002,7 +2092,7 @@ function openModal(id)  { document.getElementById(id).classList.add('open');    
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; }
 function closeModalIfOutside(e, id) { if (e.target===document.getElementById(id)) closeModal(id); }
 document.addEventListener('keydown', e => {
-  if (e.key==='Escape') ['modal-hist','modal-propose','modal-delete-card'].forEach(id => {
+  if (e.key==='Escape') ['modal-hist','modal-propose','modal-delete-card','modal-blank-card'].forEach(id => {
     if (document.getElementById(id).classList.contains('open')) closeModal(id);
   });
 });

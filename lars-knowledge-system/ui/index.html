@@ -1684,19 +1684,16 @@ function onBlankTitleInput() {
 function createBlankCard() {
   const title = document.getElementById('blank-card-title').value.trim();
   if (!title) return;
-  const q = { id: 'custom_' + Date.now() + '_0', sec: 'Mis procesos', title, ctx: '', isNew: true };
-  STATE.customQuestions.push(q);
-  STATE.questionOrder.push(q.id);
-  saveLocal();
-  cloudSaveCustomQuestion(q);
-  cloudSaveOrder(STATE.questionOrder);
   closeModal('modal-blank-card');
-  render();
-  setTimeout(() => {
-    const card = document.getElementById('card_' + q.id);
-    if (card) card.scrollIntoView({ behavior:'smooth', block:'center' });
-  }, 100);
-  showToast('✓ Tarjeta creada — "' + title + '"');
+  // Reutiliza el paso 3 del modal de proponer — sin descripción ni spinner
+  pendingName      = title;
+  pendingQuestions = generateQuestions(title, title);
+  document.getElementById('step3-name').textContent = title;
+  document.getElementById('gen-intro').innerHTML =
+    `<strong>${pendingQuestions.length} preguntas</strong> generadas para <em>${title}</em>. Edítalas, elimínalas o añade las tuyas antes de crear las tarjetas.`;
+  renderGenList();
+  showStep(3);
+  openModal('modal-propose');
 }
 
 // ══════════════════════════════════════════════════════════

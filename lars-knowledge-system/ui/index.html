@@ -541,10 +541,7 @@ textarea.upload-input { min-height:72px; resize:vertical; }
           <div class="instr-title">Sistema de captura de metodología</div>
           <div class="instr-subtitle">Este sistema recoge cómo trabajas tú — tu proceso, tu criterio, tus patrones. Cada card es una pregunta sobre tu metodología. Respóndelas en el orden que prefieras y en las sesiones que necesites. Todo queda guardado automáticamente en la nube.</div>
         </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          <button class="btn-blank-card" onclick="openBlankCardModal()">＋ Tarjeta libre</button>
-          <button class="btn-new-process" onclick="openProposeModal()">＋ Proponer nuevo proceso</button>
-        </div>
+        <button class="btn-new-process" onclick="openProposeModal()">＋ Proponer nuevo proceso</button>
       </div>
       <div class="instr-steps">
         <div class="instr-step"><div class="step-num">1</div><div class="step-text"><strong>Escribe o dicta</strong> tu respuesta en cada card. Puedes hacerlo en varias sesiones.</div></div>
@@ -705,8 +702,8 @@ textarea.upload-input { min-height:72px; resize:vertical; }
           <input type="text" class="modal-input" id="prop-name" placeholder="Nombre del proceso…">
         </div>
         <div class="field-block">
-          <div class="field-label">Describe el proceso con detalle</div>
-          <div class="field-hint">Qué haces, cuándo lo haces, qué buscas y qué suele pasar. Cuanto más contexto, mejores preguntas.</div>
+          <div class="field-label">Describe el proceso <span style="font-weight:400;color:var(--text3)">(opcional)</span></div>
+          <div class="field-hint">Cuanto más contexto, más ajustadas serán las preguntas. Si lo dejas vacío se generan preguntas genéricas.</div>
           <textarea class="modal-input" id="prop-context" placeholder="Describe cómo funciona este proceso en tu metodología…"></textarea>
         </div>
       </div>
@@ -1589,12 +1586,12 @@ function showStep(n) {
 function startGenerating() {
   const name    = document.getElementById('prop-name').value.trim();
   const context = document.getElementById('prop-context').value.trim();
-  if (!name || !context) { showToast('Completa el nombre y la descripción'); return; }
+  if (!name) { showToast('Escribe el nombre del proceso'); return; }
   pendingName = name;
   document.getElementById('step2-name').textContent = name;
   showStep(2);
   setTimeout(() => {
-    pendingQuestions = generateQuestions(name, context);
+    pendingQuestions = generateQuestions(name, context || name);
     document.getElementById('step3-name').textContent = name;
     document.getElementById('gen-intro').innerHTML =
       `El sistema propone <strong>${pendingQuestions.length} preguntas</strong> para profundizar en <em>${name}</em>. Edítalas, elimínalas o añade las tuyas.`;
